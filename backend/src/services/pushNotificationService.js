@@ -1,10 +1,9 @@
 const PushToken = require("../models/PushToken");
-import { NOTIFICATION_CHANNEL_ID } from "../../../constants/notifications";
 
 class PushNotificationService {
   constructor() {
     this.expoPushURL = "https://exp.host/--/api/v2/push/send";
-    this.channelId = NOTIFICATION_CHANNEL_ID;
+    this.channelId = "app-updates";
   }
 
   /**

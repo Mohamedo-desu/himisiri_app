@@ -1,80 +1,42 @@
-import { TAB_BAR_HEIGHT } from "@/components/CustomTabBar";
-import Empty from "@/components/Empty";
-import ScrollToTopFab from "@/components/ScrollToTopFab";
 import HomeListHeader from "@/components/home-screen/HomeListHeader";
+import ScrollToTopFab from "@/components/home-screen/ScrollToTopFab";
 import StickyHeaderContainer from "@/components/home-screen/StickyHeaderContainer";
-import PropertyCard from "@/components/ui/PropertyCard";
-import { api } from "@/convex/_generated/api";
-import { usePropertyStore } from "@/store/usePropertyStore";
-import { useUserStore } from "@/store/useUserStore";
-import { useMutation, usePaginatedQuery } from "convex/react";
-import React, { useEffect, useRef } from "react";
-import type { FlatList, ViewToken } from "react-native";
+import { TAB_BAR_HEIGHT } from "@/components/tabs/CustomTabBar";
+import CustomText from "@/components/ui/CustomText";
+import { LegendListRef } from "@legendapp/list";
+import { AnimatedLegendList } from "@legendapp/list/animated";
+import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { ActivityIndicator, View } from "react-native";
-import Animated, {
-  LinearTransition,
-  useAnimatedScrollHandler,
-} from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
 import { TabScrollYContext } from "./_layout";
 
-// Set HEADER_HEIGHT to the total height of your header (location card + filter + sort)
-const HEADER_HEIGHT = 200; // Adjust this value to match your actual header height
-const STICKY_HEIGHT = 56; // Adjust to your sticky bar's height
+type HomeScreenProps = {
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+};
 
-const HomeScreen = () => {
+const DATA = [];
+
+const HomeScreen = ({ onScroll }: HomeScreenProps) => {
   const scrollY = React.useContext(TabScrollYContext);
-  const listRef = useRef<FlatList<any>>(null);
-  const hasInitializedLocation = useRef(false);
+  const listRef = useRef<LegendListRef>(null);
 
-  const filters = usePropertyStore((s) => s.filters);
-  const searchedProperties = usePropertyStore((s) => s.searchedProperties);
-  const setSearchedProperties = usePropertyStore(
-    (s) => s.setSearchedProperties
+  const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState([]);
+
+  const [status, setStatus] = useState<"Idle" | "LoadingMore" | "Exhausted">(
+    "Idle"
   );
+  const { t } = useTranslation();
 
-  const { results, status, loadMore, isLoading } = usePaginatedQuery(
-    api.properties.searchProperties,
-    { ...filters },
-    { initialNumItems: 10 }
-  );
-
-  const initializeFiltersWithUserLocation = usePropertyStore(
-    (s) => s.initializeFiltersWithUserLocation
-  );
-
-  const currentUser = useUserStore((state) => state.currentUser);
-
-  // Track property views when they become visible
-  const trackPropertyView = useMutation(api.properties.trackPropertyView);
-  const viewedProperties = useRef(new Set<string>());
-
-  // Track property views when items become visible on screen
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      viewableItems.forEach((viewableItem) => {
-        const propertyId = viewableItem.item?._id;
-        if (propertyId && !viewedProperties.current.has(propertyId)) {
-          viewedProperties.current.add(propertyId);
-          trackPropertyView({ propertyId });
-        }
-      });
+  const scrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+    if (onScroll) {
+      onScroll(event);
     }
-  ).current;
-
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50, // Item needs to be at least 50% visible
-    waitForInteraction: false,
-  }).current;
-
-  const renderItem = ({ item }: { item: any }) => <PropertyCard item={item} />;
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
+  };
 
   const scrollToTop = () => {
     if (listRef.current) {
@@ -82,58 +44,58 @@ const HomeScreen = () => {
     }
   };
 
-  // Initialize filters with user location when user data is available (only once)
-  useEffect(() => {
-    if (currentUser?.location && !hasInitializedLocation.current) {
-      hasInitializedLocation.current = true;
-      initializeFiltersWithUserLocation();
-    }
-  }, [currentUser, initializeFiltersWithUserLocation]);
-
-  useEffect(() => {
-    setSearchedProperties(results);
-  }, [results]);
+  const renderItem = ({ item }: { item: any }) => {
+    return (
+      <View
+        style={{
+          flex: 1,
+          height: 100,
+          backgroundColor: "#ccc",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      />
+    );
+  };
 
   return (
     <>
-      <View style={styles.statusBg} />
-      <StickyHeaderContainer
-        scrollY={scrollY}
-        headerHeight={HEADER_HEIGHT}
-        stickyHeight={STICKY_HEIGHT}
-      />
+      <StickyHeaderContainer scrollY={scrollY} />
 
-      <Animated.FlatList
+      <AnimatedLegendList
         ref={listRef}
-        numColumns={2}
         columnWrapperStyle={styles.columnWrapperStyle}
         contentContainerStyle={styles.contentContainerStyle}
         showsVerticalScrollIndicator={false}
         style={styles.screen}
-        data={searchedProperties}
+        data={DATA}
         renderItem={renderItem}
         ListHeaderComponent={HomeListHeader}
         onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        onEndReachedThreshold={0.5}
-        onEndReached={() => loadMore(10)}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
         ListEmptyComponent={
           isLoading ? (
             <ActivityIndicator size="small" color={PRIMARY_COLOR} />
           ) : !isLoading && results.length === 0 ? (
-            <Empty text="No properties found. Try adjusting your filters or search criteria." />
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <CustomText variant="caption" color="grey500">
+                {t("homeScreen.noResults")}
+              </CustomText>
+            </View>
           ) : null
         }
         ListFooterComponent={
           status === "LoadingMore" ? (
             <ActivityIndicator size="small" color={PRIMARY_COLOR} />
           ) : status === "Exhausted" && results.length !== 0 ? (
-            <Empty text="You've reached the end of the list." />
+            <CustomText> {t("homeScreen.exhausted")}</CustomText>
           ) : null
         }
-        itemLayoutAnimation={LinearTransition}
       />
 
       <ScrollToTopFab onPress={scrollToTop} scrollY={scrollY} />
@@ -146,25 +108,16 @@ export default HomeScreen;
 const styles = StyleSheet.create((theme, rt) => ({
   screen: {
     flex: 1,
-    paddingTop: rt.insets.top,
     paddingHorizontal: theme.paddingHorizontal,
     backgroundColor: theme.colors.background,
   },
 
   contentContainerStyle: {
     flexGrow: 1,
-    gap: theme.gap(0.5),
+    gap: theme.gap(2),
     paddingBottom: rt.insets.bottom + TAB_BAR_HEIGHT + 25,
   },
   columnWrapperStyle: {
-    gap: theme.gap(0.5),
-  },
-  statusBg: {
-    position: "absolute",
-    top: 0,
-    zIndex: 1000,
-    backgroundColor: theme.colors.primary,
-    height: rt.insets.top,
-    width: "100%",
+    gap: theme.gap(1),
   },
 }));

@@ -1,16 +1,15 @@
-import LoginPrompt from "@/components/LoginPrompt";
+import LoginPrompt from "@/components/auth/LoginPrompt";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import { Stack } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { DeviceEventEmitter } from "react-native";
 import { useUnistyles } from "react-native-unistyles";
-import { PRIMARY_COLOR } from "unistyles";
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)",
+  anchor: "(tabs)",
 };
 
-const RootLayout = () => {
+const MainLayout = () => {
   const { theme } = useUnistyles();
   const {
     showLoginPrompt,
@@ -20,13 +19,11 @@ const RootLayout = () => {
     resetPromptState,
   } = useLoginPrompt(10);
 
-  // Listen for events to control login prompt
-  // Memoize event handlers to keep them stable between renders
-  const handleResetPrompt = React.useCallback(() => {
+  const handleResetPrompt = useCallback(() => {
     resetPromptState();
   }, [resetPromptState]);
 
-  const handleShowPrompt = React.useCallback(() => {
+  const handleShowPrompt = useCallback(() => {
     setShowLoginPrompt(true);
   }, [setShowLoginPrompt]);
 
@@ -51,91 +48,6 @@ const RootLayout = () => {
     <>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="filters-screen"
-          options={{
-            headerShown: false,
-            presentation: "transparentModal",
-            animation: "fade",
-          }}
-        />
-
-        <Stack.Screen
-          name="listings"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Your Listings",
-          }}
-        />
-        <Stack.Screen
-          name="properties"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="manage-profile"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Manage Personal Details",
-          }}
-        />
-        <Stack.Screen
-          name="manage-theme"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Manage Theme",
-          }}
-        />
-        <Stack.Screen
-          name="manage-notifications"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Manage Notifications",
-          }}
-        />
-        <Stack.Screen
-          name="manage-currencies"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Manage Currencies",
-          }}
-        />
-        <Stack.Screen
-          name="contact-support"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Contact Support",
-          }}
-        />
-        <Stack.Screen
-          name="faq"
-          options={{
-            headerStyle: {
-              backgroundColor: PRIMARY_COLOR,
-            },
-            headerTintColor: theme.colors.onPrimary,
-            headerTitle: "Frequently Asked Questions",
-          }}
-        />
       </Stack>
 
       {/* Login Prompt Modal */}
@@ -148,4 +60,4 @@ const RootLayout = () => {
   );
 };
 
-export default RootLayout;
+export default MainLayout;

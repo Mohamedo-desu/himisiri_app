@@ -1,3 +1,4 @@
+import "@/translations/i18n";
 import { ScrollViewStyleReset } from "expo-router/html";
 import React, { type PropsWithChildren } from "react";
 import "../../unistyles";

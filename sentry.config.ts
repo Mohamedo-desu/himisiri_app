@@ -15,7 +15,7 @@ export const sentryConfig = {
   profilesSampleRate: 1.0,
   replaysSessionSampleRate: 1.0,
   replaysOnErrorSampleRate: 1.0,
-  dsn: "https://116c880ad3feda8ca1c82851095d38c2@o4507503716794368.ingest.us.sentry.io/4510034726617088",
+  dsn: "https://9222d80c50396e509d7ce16d970449a0@o4507503716794368.ingest.us.sentry.io/4510035052986368",
   sendDefaultPii: true,
   // Configure Session Replay
   integrations: [

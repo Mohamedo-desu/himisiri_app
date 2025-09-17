@@ -1,4 +1,4 @@
-import CustomTabBar from "@/components/CustomTabBar";
+import CustomTabBar from "@/components/tabs/CustomTabBar";
 import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
 import { Tabs } from "expo-router";
 import React, { createContext } from "react";
@@ -28,37 +28,13 @@ const NAV_ITEMS: NavItem[] = [
     headerShown: false,
     headerTitle: "",
   },
-  {
-    name: "dashboard",
-    label: "Dashboard",
-    headerTitle: "Manage your properties",
-    solid: IconsSolid.Squares2X2Icon,
-    outline: IconsOutline.Squares2X2Icon,
-    headerShown: true,
-  },
-  {
-    name: "offers",
-    label: "Offers",
-    headerTitle: "Manage your offers",
-    solid: IconsSolid.HandRaisedIcon,
-    outline: IconsOutline.HandRaisedIcon,
-    headerShown: true,
-  },
-  {
-    name: "settings",
-    label: "Settings",
-    headerTitle: "Manage your account",
-    solid: IconsSolid.Cog6ToothIcon,
-    outline: IconsOutline.Cog6ToothIcon,
-    headerShown: true,
-  },
 ];
 
 // Context to provide scrollY to all tab screens
 export const TabScrollYContext = createContext<any>(null);
 
 export const unstable_settings = {
-  initialRouteName: "index",
+  anchor: "index",
 };
 
 const TabsLayout = () => {

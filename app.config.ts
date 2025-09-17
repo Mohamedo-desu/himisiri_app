@@ -1,7 +1,7 @@
 import { ConfigContext, ExpoConfig } from "expo/config";
 
 const EAS_PROJECT_ID = "a111f31d-26cc-4966-88da-77e36c8b6764";
-const PROJECT_SLUG = "himisiri";
+const PROJECT_SLUG = "himisiri_app";
 const OWNER = "mohamedo-desu";
 
 // App production config
@@ -47,11 +47,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundImage: "./assets/images/android-icon-background.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
+      googleServicesFile: "./google-services.json",
       package: packageName,
       softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: true,
-      googleServicesFile: "./google-services.json",
       intentFilters: [
         {
           action: "VIEW",
@@ -146,7 +146,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
 
       "expo-router",
-      "expo-background-task",
       "expo-font",
       "./plugins/scrollbar-color.js",
       "./plugins/customize.js",

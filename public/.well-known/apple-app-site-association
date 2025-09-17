@@ -3,8 +3,8 @@
     "details": [
       {
         "appIDs": [
-          "TEAM_ID.com.mohamedodesu.convertly",
-          "TEAM_ID.com.mohamedodesu.convertly.dev"
+          "TEAM_ID.com.mohamedodesu.himisiri_app",
+          "TEAM_ID.com.mohamedodesu.himisiri_app.dev"
         ],
         "components": [
           {
@@ -17,8 +17,8 @@
   },
   "webcredentials": {
     "apps": [
-      "TEAM_ID.com.mohamedodesu.convertly",
-      "TEAM_ID.com.mohamedodesu.convertly.dev"
+      "TEAM_ID.com.mohamedodesu.himisiri_app",
+      "TEAM_ID.com.mohamedodesu.himisiri_app.dev"
     ]
   }
 }

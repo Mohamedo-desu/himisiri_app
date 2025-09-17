@@ -1,4 +1,4 @@
-export const SLUG = "himisiri";
+export const SLUG = "himisiri_app";
 export const APP_NAME = "Himisiri";
 export const TAGLINE = "Share. Discover. Connect.Anonymously.";
 export const BUNDLE_IDENTIFIER = `com.mohamedodesu.${SLUG}`;

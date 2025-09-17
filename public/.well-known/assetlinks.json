@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.mohamedodesu.convertly",
+      "package_name": "com.mohamedodesu.himisiri_app",
       "sha256_cert_fingerprints": [
-        "46:4F:F3:0A:2C:FF:C5:FB:E8:3E:47:78:FD:27:5B:47:36:8F:2D:05:22:7B:50:97:45:5A:53:57:95:B5:AF:9F"
+        "0A:09:9A:7F:A8:05:2F:6C:A4:7A:5A:D8:EF:8B:32:79:8C:00:B2:65:65:5E:93:5A:DB:A9:B4:1C:79:81:5A:0F"
       ]
     }
   }
