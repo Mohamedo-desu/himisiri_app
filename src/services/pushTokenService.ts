@@ -1,13 +1,14 @@
+import { api } from "@/convex/_generated/api";
+import { convex } from "@/providers/ClerkAndConvexProvider";
 import { saveToLocalStorage } from "@/store/storage";
 import { PushTokenManager } from "@/utils/pushTokenManager";
-import { BACKEND_URL } from "constants/device";
 import { Platform } from "react-native";
 
 interface RegisterTokenResponse {
   success: boolean;
   message: string;
   tokenId?: string;
-  alreadyExists?: boolean;
+  userId?: string;
 }
 
 export class PushTokenService {
@@ -24,37 +25,25 @@ export class PushTokenService {
       const { deviceId, deviceInfo } =
         await PushTokenManager.initializeDeviceTracking();
 
-      // console.log("Registering push token with device info:", {
-      //   deviceId,
-      //   deviceInfo,
-      // });
-
-      const response = await fetch(`${BACKEND_URL}/push-tokens/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pushToken,
-          deviceId,
-          platform: Platform.OS,
-          deviceName: deviceInfo.deviceName,
-          deviceType: deviceInfo.deviceType,
-          modelName: deviceInfo.modelName,
-          brand: deviceInfo.brand,
-          manufacturer: deviceInfo.manufacturer,
-          osName: deviceInfo.osName,
-          osVersion: deviceInfo.osVersion,
-          timestamp: new Date().toLocaleString(),
-        }),
+      const data = await convex.mutation(api.pushTokens.registerPushToken, {
+        pushToken,
+        deviceId,
+        platform: Platform.OS,
+        deviceName: deviceInfo.deviceName ? String(deviceInfo.deviceName) : "",
+        deviceType: deviceInfo.deviceType ? String(deviceInfo.deviceType) : "",
+        modelName: deviceInfo.modelName ? String(deviceInfo.modelName) : "",
+        brand: deviceInfo.brand ? String(deviceInfo.brand) : "",
+        manufacturer: deviceInfo.manufacturer
+          ? String(deviceInfo.manufacturer)
+          : "",
+        osName: deviceInfo.osName ? String(deviceInfo.osName) : "",
+        osVersion: deviceInfo.osVersion ? String(deviceInfo.osVersion) : "",
+        timestamp: new Date().toLocaleString(),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to register push token");
+      if (!data) {
+        return { success: false, message: "Failed to register push token" };
       }
-
       return data;
     } catch (error) {
       console.error("Error registering push token:", error);
@@ -69,7 +58,8 @@ export class PushTokenService {
    */
   static async savePushTokenRegistration(
     pushToken: string,
-    tokenId?: string
+    tokenId?: string,
+    userId?: string
   ): Promise<void> {
     try {
       const dataToSave = [
@@ -80,6 +70,9 @@ export class PushTokenService {
 
       if (tokenId) {
         dataToSave.push({ key: "pushTokenId", value: tokenId });
+      }
+      if (userId) {
+        dataToSave.push({ key: "pushTokenUserId", value: userId });
       }
 
       saveToLocalStorage(dataToSave);

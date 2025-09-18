@@ -1,6 +1,6 @@
 import { useSSO } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import * as Linking from "expo-linking";
+import { APP_NAME, TAGLINE } from "constants/device";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -33,11 +33,9 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      const redirectUrl = Linking.createURL("/");
 
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: "oauth_google",
-        redirectUrl,
       });
 
       if (setActive && createdSessionId) {
@@ -68,24 +66,24 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={10} color="#fff" />
+              <Ionicons name="close" size={10} color={PRIMARY_COLOR} />
             </TouchableOpacity>
             <CustomText
-              variant="h2"
+              variant="h3"
               semibold
               textAlign="center"
               color="onPrimary"
             >
-              Welcome to RentiZa
+              Welcome to {APP_NAME}
             </CustomText>
 
             <CustomText
-              variant="body2"
-              color="grey500"
+              variant="caption"
+              color="grey700"
               textAlign="center"
               style={{ marginTop: 8, marginBottom: 28 }}
             >
-              Discover, manage and save your favorite properties with ease.
+              {TAGLINE}
             </CustomText>
 
             {/* Login button */}
@@ -121,7 +119,7 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
               <View style={styles.line} />
               <CustomText
                 variant="caption"
-                color="grey500"
+                color="grey700"
                 style={{ marginHorizontal: 8 }}
               >
                 OR
@@ -146,7 +144,7 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
             {/* Footer message */}
             <CustomText
               variant="caption"
-              color="grey500"
+              color="grey700"
               textAlign="center"
               italic
               style={{ marginTop: 20 }}

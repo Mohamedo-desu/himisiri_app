@@ -1,3 +1,5 @@
+import { BACKEND_URL } from "constants/device";
+
 interface VersionInfo {
   _id: string;
   version: string;
@@ -10,12 +12,8 @@ interface VersionInfo {
 export const fetchVersionInfo = async (
   major?: string
 ): Promise<VersionInfo | null> => {
-  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-
   try {
-    const url = `${backendUrl}/api/version/latest${
-      major ? `?major=${major}` : ""
-    }`;
+    const url = `${BACKEND_URL}/version/latest${major ? `?major=${major}` : ""}`;
 
     const response = await fetch(url);
 

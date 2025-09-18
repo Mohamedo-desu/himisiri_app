@@ -1,4 +1,5 @@
 import { getFromLocalStorage } from "@/store/storage";
+import { useUserStore } from "@/store/useUserStore";
 import { getDeviceId } from "@/utils/deviceId";
 import { getDeviceInfo } from "@/utils/deviceInfo";
 
@@ -24,10 +25,29 @@ export class PushTokenManager {
    */
   static async isPushTokenRegistered(): Promise<boolean> {
     try {
-      const { pushTokenString, pushTokenRegistered } = getFromLocalStorage([
-        "pushTokenString",
-        "pushTokenRegistered",
-      ]);
+      const { pushTokenString, pushTokenRegistered, pushTokenUserId } =
+        getFromLocalStorage([
+          "pushTokenString",
+          "pushTokenRegistered",
+          "pushTokenUserId",
+        ]);
+
+      const currentUser = useUserStore.getState().currentUser;
+
+      // If userId is missing but currentUser has _id, rerun registration
+      if (
+        !pushTokenUserId &&
+        currentUser &&
+        currentUser._id &&
+        pushTokenString
+      ) {
+        // Import PushTokenService dynamically to avoid circular deps
+        const { PushTokenService } = await import(
+          "@/services/pushTokenService"
+        );
+        await PushTokenService.registerPushToken(pushTokenString);
+        // Optionally, update local storage with new userId here if needed
+      }
 
       // Return true if we have both a token and registration confirmation
       return !!(pushTokenString && pushTokenRegistered === "true");

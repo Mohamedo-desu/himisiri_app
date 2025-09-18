@@ -14,7 +14,7 @@ if (!publishableKey) {
   );
 }
 
-const convex = new ConvexReactClient(convexKey, {
+export const convex = new ConvexReactClient(convexKey, {
   unsavedChangesWarning: false,
 });
 

@@ -15,7 +15,7 @@ const InitialLayout = () => {
     dismissLoginPrompt,
     signInAsGuest,
     resetPromptState,
-  } = useLoginPrompt(10);
+  } = useLoginPrompt(0);
 
   // Listen for events to control login prompt
   const handleResetPrompt = () => {

@@ -23,6 +23,21 @@ export const userCount = defineTable({
   count: v.number(),
 });
 
+export const pushToken = defineTable({
+  userId: v.optional(v.id("users")),
+  pushToken: v.string(),
+  deviceId: v.string(),
+  platform: v.string(),
+  deviceName: v.string(),
+  deviceType: v.string(),
+  modelName: v.string(),
+  brand: v.string(),
+  manufacturer: v.string(),
+  osName: v.string(),
+  osVersion: v.string(),
+  timestamp: v.string(),
+});
+
 export default defineSchema({
   users: users
     .index("by_clerk_id", ["clerkId"])
@@ -30,6 +45,10 @@ export default defineSchema({
     .index("by_gender", ["gender"])
     .index("by_age", ["age"]),
   userCount: userCount,
+  pushToken: pushToken
+    .index("by_user", ["userId"])
+    .index("by_deviceId", ["deviceId"])
+    .index("by_push_token", ["pushToken"]),
 });
 
 export type USER_TABLE = Infer<typeof users.validator> & {

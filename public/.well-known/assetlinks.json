@@ -1,8 +1,11 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
-      "namespace": "android_app",
+      "namespace": "Himisiri",
       "package_name": "com.mohamedodesu.himisiri_app",
       "sha256_cert_fingerprints": [
         "0A:09:9A:7F:A8:05:2F:6C:A4:7A:5A:D8:EF:8B:32:79:8C:00:B2:65:65:5E:93:5A:DB:A9:B4:1C:79:81:5A:0F"

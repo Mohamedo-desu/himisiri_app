@@ -1,5 +1,6 @@
 import { PushTokenService } from "@/services/pushTokenService";
 import { PushTokenManager } from "@/utils/pushTokenManager";
+import { APP_NAME } from "constants/device";
 import { NOTIFICATION_CHANNEL_ID } from "constants/notifications";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
@@ -27,7 +28,7 @@ const useSetupForPushNotifications = () => {
       // Set up notification channel for Android
       if (Platform.OS === "android") {
         Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
-          name: "Currency Converter Updates",
+          name: APP_NAME,
           description:
             "Notifications for app updates and important announcements",
           importance: Notifications.AndroidImportance.HIGH,
@@ -84,12 +85,9 @@ const useSetupForPushNotifications = () => {
         // Save registration status locally
         await PushTokenService.savePushTokenRegistration(
           pushTokenString,
-          result.tokenId
+          result.tokenId,
+          result.userId
         );
-
-        if (result.alreadyExists) {
-          console.log("ℹ️ Token was already registered on backend");
-        }
       } else {
         handleRegistrationError(
           `Failed to register push token: ${result.message}`
