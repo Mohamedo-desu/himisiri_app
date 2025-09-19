@@ -40,24 +40,54 @@ export const registerPushToken = mutation({
       };
     }
 
-    // Handle the registration logic here
-    const pushTokenEntry = await ctx.db.insert("pushToken", {
-      userId: authenticatedUser?._id,
-      pushToken,
-      deviceId,
-      platform,
-      deviceName,
-      deviceType,
-      modelName,
-      brand,
-      manufacturer,
-      osName,
-      osVersion,
-      timestamp,
-    });
+    // Check if a push token with this deviceId already exists
+    const existingToken = await ctx.db
+      .query("pushTokens")
+      .filter((q) => q.eq(q.field("deviceId"), deviceId))
+      .first();
+
+    let pushTokenEntry;
+    let message;
+
+    if (existingToken) {
+      // Update the existing push token
+      await ctx.db.patch(existingToken._id, {
+        userId: authenticatedUser?._id,
+        pushToken,
+        platform,
+        deviceName,
+        deviceType,
+        modelName,
+        brand,
+        manufacturer,
+        osName,
+        osVersion,
+        timestamp,
+      });
+      pushTokenEntry = existingToken._id;
+      message = "Push token updated successfully";
+    } else {
+      // Create a new push token entry
+      pushTokenEntry = await ctx.db.insert("pushTokens", {
+        userId: authenticatedUser?._id,
+        pushToken,
+        deviceId,
+        platform,
+        deviceName,
+        deviceType,
+        modelName,
+        brand,
+        manufacturer,
+        osName,
+        osVersion,
+        timestamp,
+      });
+      message = "Push token registered successfully";
+    }
+
     return {
       success: true,
-      message: "Push token registered successfully",
+      message,
       tokenId: pushTokenEntry,
       userId: authenticatedUser?._id,
     };

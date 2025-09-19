@@ -2,7 +2,6 @@ import { MMKV } from "react-native-mmkv";
 
 export const storage = new MMKV({
   id: "my-app-storage",
-  encryptionKey: "Ug4586@#",
 });
 
 export const mmkvStorage = {

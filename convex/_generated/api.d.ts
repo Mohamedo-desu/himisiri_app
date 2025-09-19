@@ -13,8 +13,21 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as autoModerationUtils from "../autoModerationUtils.js";
+import type * as comments from "../comments.js";
+import type * as customFunctions from "../customFunctions.js";
 import type * as http from "../http.js";
+import type * as likes from "../likes.js";
+import type * as notificationTriggers from "../notificationTriggers.js";
+import type * as notifications from "../notifications.js";
+import type * as posts from "../posts.js";
+import type * as pushNotifications from "../pushNotifications.js";
 import type * as pushTokens from "../pushTokens.js";
+import type * as rateLimitedFunctions from "../rateLimitedFunctions.js";
+import type * as rateLimits from "../rateLimits.js";
+import type * as replies from "../replies.js";
+import type * as reports from "../reports.js";
+import type * as triggers from "../triggers.js";
 import type * as users from "../users.js";
 
 /**
@@ -26,8 +39,21 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  autoModerationUtils: typeof autoModerationUtils;
+  comments: typeof comments;
+  customFunctions: typeof customFunctions;
   http: typeof http;
+  likes: typeof likes;
+  notificationTriggers: typeof notificationTriggers;
+  notifications: typeof notifications;
+  posts: typeof posts;
+  pushNotifications: typeof pushNotifications;
   pushTokens: typeof pushTokens;
+  rateLimitedFunctions: typeof rateLimitedFunctions;
+  rateLimits: typeof rateLimits;
+  replies: typeof replies;
+  reports: typeof reports;
+  triggers: typeof triggers;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

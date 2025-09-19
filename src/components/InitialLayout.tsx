@@ -1,13 +1,13 @@
 import LoginPrompt from "@/components/auth/LoginPrompt";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
+import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
 import { DeviceEventEmitter } from "react-native";
-import { SystemBars } from "react-native-edge-to-edge";
-import { useUnistyles } from "react-native-unistyles";
 
 const InitialLayout = () => {
-  const { theme } = useUnistyles();
+  // Set up push notification registration (permissions, token, listeners, etc.)
+  useSetupForPushNotifications();
 
   const {
     showLoginPrompt,
@@ -15,7 +15,7 @@ const InitialLayout = () => {
     dismissLoginPrompt,
     signInAsGuest,
     resetPromptState,
-  } = useLoginPrompt(0);
+  } = useLoginPrompt(10);
 
   // Listen for events to control login prompt
   const handleResetPrompt = () => {
@@ -53,9 +53,6 @@ const InitialLayout = () => {
         visible={showLoginPrompt}
         onClose={dismissLoginPrompt}
         onGuestSignIn={signInAsGuest}
-      />
-      <SystemBars
-        style={theme.colors.background === "#121212" ? "light" : "dark"}
       />
     </>
   );

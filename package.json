@@ -30,6 +30,7 @@
     "@react-navigation/native": "^7.1.8",
     "@sentry/react-native": "~6.20.0",
     "convex": "^1.27.0",
+    "convex-helpers": "^0.1.104",
     "date-fns": "^4.1.0",
     "expo": "~54.0.8",
     "expo-build-properties": "^1.0.8",

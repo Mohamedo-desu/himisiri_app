@@ -1,14 +1,17 @@
 import HomeListHeader from "@/components/home-screen/HomeListHeader";
+import PostCard from "@/components/home-screen/PostCard";
 import ScrollToTopFab from "@/components/home-screen/ScrollToTopFab";
 import StickyHeaderContainer from "@/components/home-screen/StickyHeaderContainer";
 import { TAB_BAR_HEIGHT } from "@/components/tabs/CustomTabBar";
 import CustomText from "@/components/ui/CustomText";
+import { api } from "@/convex/_generated/api";
 import { LegendListRef } from "@legendapp/list";
 import { AnimatedLegendList } from "@legendapp/list/animated";
-import React, { useRef, useState } from "react";
+import { usePaginatedQuery } from "convex/react";
+import React, { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, RefreshControl, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
 import { TabScrollYContext } from "./_layout";
@@ -17,19 +20,25 @@ type HomeScreenProps = {
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
-const DATA = [];
-
 const HomeScreen = ({ onScroll }: HomeScreenProps) => {
   const scrollY = React.useContext(TabScrollYContext);
   const listRef = useRef<LegendListRef>(null);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState([]);
-
-  const [status, setStatus] = useState<"Idle" | "LoadingMore" | "Exhausted">(
-    "Idle"
-  );
   const { t } = useTranslation();
+
+  // Fetch paginated posts from backend
+  const { results, status, isLoading, loadMore } = usePaginatedQuery(
+    api.posts.getPaginatedPosts,
+    {},
+    { initialNumItems: 10 }
+  );
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // The query will automatically refresh
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const scrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
@@ -45,17 +54,33 @@ const HomeScreen = ({ onScroll }: HomeScreenProps) => {
   };
 
   const renderItem = ({ item }: { item: any }) => {
-    return (
-      <View
-        style={{
-          flex: 1,
-          height: 100,
-          backgroundColor: "#ccc",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      />
-    );
+    try {
+      return (
+        <PostCard
+          post={item}
+          onPress={() => {
+            // TODO: Navigate to post details screen
+            console.log("Tapped post:", item._id);
+          }}
+        />
+      );
+    } catch (error) {
+      console.error("Error rendering post item:", error);
+      return (
+        <View
+          style={{
+            padding: 16,
+            backgroundColor: "#ffebee",
+            borderRadius: 8,
+            margin: 8,
+          }}
+        >
+          <CustomText variant="caption" color="grey500">
+            Error loading post
+          </CustomText>
+        </View>
+      );
+    }
   };
 
   return (
@@ -68,32 +93,72 @@ const HomeScreen = ({ onScroll }: HomeScreenProps) => {
         contentContainerStyle={styles.contentContainerStyle}
         showsVerticalScrollIndicator={false}
         style={styles.screen}
-        data={DATA}
+        data={results}
         renderItem={renderItem}
         ListHeaderComponent={HomeListHeader}
         onScroll={scrollHandler}
+        onEndReached={() => loadMore(10)}
+        onEndReachedThreshold={0.1}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[PRIMARY_COLOR]}
+            tintColor={PRIMARY_COLOR}
+          />
+        }
         ListEmptyComponent={
           isLoading ? (
-            <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-          ) : !isLoading && results.length === 0 ? (
             <View
               style={{
                 flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
+                paddingVertical: 50,
               }}
             >
-              <CustomText variant="caption" color="grey500">
+              <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+              <CustomText
+                variant="caption"
+                color="grey500"
+                style={{ marginTop: 10 }}
+              >
+                Loading posts...
+              </CustomText>
+            </View>
+          ) : results.length === 0 ? (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                paddingVertical: 50,
+              }}
+            >
+              <CustomText variant="body1" color="grey500">
                 {t("homeScreen.noResults")}
+              </CustomText>
+              <CustomText
+                variant="caption"
+                color="grey400"
+                style={{ marginTop: 5 }}
+              >
+                Be the first to share something!
               </CustomText>
             </View>
           ) : null
         }
         ListFooterComponent={
           status === "LoadingMore" ? (
-            <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-          ) : status === "Exhausted" && results.length !== 0 ? (
-            <CustomText> {t("homeScreen.exhausted")}</CustomText>
+            <View style={{ paddingVertical: 20, alignItems: "center" }}>
+              <ActivityIndicator size="small" color={PRIMARY_COLOR} />
+            </View>
+          ) : status === "Exhausted" && results.length > 0 ? (
+            <View style={{ paddingVertical: 20, alignItems: "center" }}>
+              <CustomText variant="caption" color="grey500">
+                {t("homeScreen.exhausted")}
+              </CustomText>
+            </View>
           ) : null
         }
       />

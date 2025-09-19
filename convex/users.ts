@@ -144,7 +144,8 @@ export const deleteAccountByClerkId = internalMutation({
       }
     }
 
-    // 4. Finally, delete the user record
+    // 4. Finally, delete the user record - this will trigger cascading deletes
+    console.log(`Deleting user account for ${user.userName} (${userId})`);
     await ctx.db.delete(userId);
 
     return { success: true };
@@ -152,15 +153,15 @@ export const deleteAccountByClerkId = internalMutation({
 });
 
 export const getCount = internalQuery(async (ctx) => {
-  const doc = await ctx.db.query("userCount").first();
+  const doc = await ctx.db.query("userCounts").first();
   return doc ?? { count: 0 };
 });
 
 export const increment = internalMutation(async (ctx) => {
-  const doc = await ctx.db.query("userCount").first();
+  const doc = await ctx.db.query("userCounts").first();
   if (doc) {
     await ctx.db.patch(doc._id, { count: doc.count + 1 });
   } else {
-    await ctx.db.insert("userCount", { count: 1 });
+    await ctx.db.insert("userCounts", { count: 1 });
   }
 });
