@@ -1,5 +1,5 @@
 {
-  "name": "himisiri_app",
+  "name": "himisiri_confession_app",
   "main": "index.ts",
   "version": "1.0.0",
   "scripts": {
@@ -16,15 +16,14 @@
     "test": "jest --watchAll",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
-    "ios": "expo run:ios",
-    "postinstall": "npx patch-package"
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.15.0",
     "@dicebear/collection": "^9.2.4",
     "@dicebear/core": "^9.2.4",
-    "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.2",
+    "@faker-js/faker": "^10.0.0",
     "@legendapp/list": "^2.0.6",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
@@ -35,7 +34,7 @@
     "expo": "~54.0.8",
     "expo-build-properties": "^1.0.8",
     "expo-constants": "~18.0.9",
-    "expo-device": "^8.0.7",
+    "expo-device": "~8.0.8",
     "expo-font": "~14.0.8",
     "expo-haptics": "~15.0.7",
     "expo-image": "~3.0.8",
@@ -55,17 +54,16 @@
     "react-i18next": "^15.7.3",
     "react-native": "0.81.4",
     "react-native-animated-numbers": "^0.6.3",
-    "react-native-edge-to-edge": "^1.7.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-heroicons": "^4.0.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
-    "react-native-mmkv": "^3.3.1",
+    "react-native-mmkv": "^3.3.3",
     "react-native-nitro-modules": "^0.29.6",
     "react-native-reanimated": "~4.1.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
-    "react-native-unistyles": "^3.0.12",
+    "react-native-unistyles": "^3.0.13",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
     "svix": "^1.76.1",
@@ -77,6 +75,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0"
   },
+  "private": true,
   "trustedDependencies": [
     "@clerk/shared",
     "@sentry/cli",
@@ -85,25 +84,5 @@
     "esbuild",
     "react-native-nitro-modules",
     "unrs-resolver"
-  ],
-  "expo": {
-    "doctor": {
-      "reactNativeDirectoryCheck": {
-        "enabled": true,
-        "exclude": [
-          "convex",
-          "svix",
-          "eslint-plugin-react-compiler",
-          "@hookform/resolvers",
-          "convex-helpers",
-          "patch-package",
-          "react-native-rolling-bar",
-          "react-native-keyboard-aware-scroll-view",
-          "react-native-heroicons"
-        ],
-        "listUnknownPackages": true
-      }
-    }
-  },
-  "private": true
+  ]
 }

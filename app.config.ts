@@ -1,7 +1,7 @@
 import { ConfigContext, ExpoConfig } from "expo/config";
 
-const EAS_PROJECT_ID = "a111f31d-26cc-4966-88da-77e36c8b6764";
-const PROJECT_SLUG = "himisiri_app";
+const EAS_PROJECT_ID = "b86e6f9f-967d-4e41-82b4-e7c0c2f6d0d2";
+const PROJECT_SLUG = "himisiri";
 const OWNER = "mohamedo-desu";
 
 // App production config
@@ -153,7 +153,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     experiments: {
       reactCanary: true,
       typedRoutes: true,
-      reactCompiler: true,
+      reactCompiler: false,
     },
     owner: OWNER,
   };

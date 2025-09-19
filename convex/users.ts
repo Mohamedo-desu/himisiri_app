@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import {
   action,
   internalMutation,
+  internalQuery,
   MutationCtx,
   query,
   QueryCtx,
@@ -148,4 +149,18 @@ export const deleteAccountByClerkId = internalMutation({
 
     return { success: true };
   },
+});
+
+export const getCount = internalQuery(async (ctx) => {
+  const doc = await ctx.db.query("userCount").first();
+  return doc ?? { count: 0 };
+});
+
+export const increment = internalMutation(async (ctx) => {
+  const doc = await ctx.db.query("userCount").first();
+  if (doc) {
+    await ctx.db.patch(doc._id, { count: doc.count + 1 });
+  } else {
+    await ctx.db.insert("userCount", { count: 1 });
+  }
 });

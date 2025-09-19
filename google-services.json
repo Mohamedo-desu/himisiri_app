@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "493487066459",
-    "project_id": "himisiri-cd97a",
-    "storage_bucket": "himisiri-cd97a.firebasestorage.app"
+    "project_number": "985669151659",
+    "project_id": "himisiri-confession",
+    "storage_bucket": "himisiri-confession.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:493487066459:android:5a32f5f3598af68c541e7e",
+        "mobilesdk_app_id": "1:985669151659:android:5239c4e607eedb167d00ee",
         "android_client_info": {
-          "package_name": "com.mohamedodesu.himisiri_app"
+          "package_name": "com.mohamedodesu.himisiri"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBJO0zfgRQRDQqcK1zrnBdsREQX2MVidDQ"
+          "current_key": "AIzaSyBgX9qD6G5VY_5RWYGY2TWN5V2pIPpBywI"
         }
       ],
       "services": {

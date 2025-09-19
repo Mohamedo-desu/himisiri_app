@@ -8,9 +8,10 @@ import * as Notifications from "expo-notifications";
 import { useNavigationContainerRef } from "expo-router";
 import { useEffect } from "react";
 import { LogBox } from "react-native";
+import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { enableFreeze } from "react-native-screens";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { sentryConfig } from "sentry.config";
 
 LogBox.ignoreLogs(["Clerk: Clerk has been loaded with development keys."]);
@@ -47,6 +48,8 @@ function RootLayout() {
   // Set up push notification registration (permissions, token, listeners, etc.)
   useSetupForPushNotifications();
 
+  const { theme } = useUnistyles();
+
   // Hook Sentry into navigation container
   useEffect(() => {
     if (navigationRef?.current) {
@@ -55,11 +58,16 @@ function RootLayout() {
   }, [navigationRef]);
 
   return (
-    <ClerkAndConvexProvider>
-      <GestureHandlerRootView style={styles.container}>
-        <InitialLayout />
-      </GestureHandlerRootView>
-    </ClerkAndConvexProvider>
+    <>
+      <ClerkAndConvexProvider>
+        <GestureHandlerRootView style={styles.container}>
+          <InitialLayout />
+        </GestureHandlerRootView>
+      </ClerkAndConvexProvider>
+      <SystemBars
+        style={theme.colors.background === "#121212" ? "light" : "dark"}
+      />
+    </>
   );
 }
 

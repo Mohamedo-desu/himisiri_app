@@ -1,6 +1,7 @@
 import { useSSO } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { APP_NAME, TAGLINE } from "constants/device";
+import * as Linking from "expo-linking";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -34,8 +35,11 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
     try {
       setIsLoading(true);
 
+      const redirectUrl = Linking.createURL("/");
+
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: "oauth_google",
+        redirectUrl,
       });
 
       if (setActive && createdSessionId) {

@@ -1,5 +1,6 @@
-import { avataaars } from "@dicebear/collection";
+import { adventurer } from "@dicebear/collection";
 import { createAvatar } from "@dicebear/core";
+import { faker } from "@faker-js/faker";
 import { httpRouter } from "convex/server";
 import { Webhook } from "svix";
 import { internal } from "./_generated/api";
@@ -56,30 +57,49 @@ http.route({
     const eventType = evt.type;
 
     if (eventType === "user.created") {
-      const { id, email_addresses, image_url } = evt.data;
-
+      const { id, email_addresses } = evt.data;
       const email = email_addresses[0].email_address;
-      const imageUrl = image_url;
-      const userName = email.split("@")[0];
 
       try {
-        const avatar = createAvatar(avataaars, {
-          seed: userName,
-        });
-        const svg = avatar.toString();
+        // 1. Get current user count
+        const countDoc = await ctx.runQuery(internal.users.getCount, {});
+        const latestCount = countDoc?.count ?? 0;
 
+        // 2. Increment user count
+        await ctx.runMutation(internal.users.increment, {});
+
+        // 3. Generate anonymous Reddit-style username
+        const adjective = faker.word.adjective({ length: { min: 4, max: 8 } });
+        const animal = faker.animal.type(); // e.g. "Tiger", "Otter"
+        const userName = `${adjective}${animal}${latestCount + 1}`;
+
+        // 4. Generate avatar
+        const avatar = createAvatar(adventurer, {
+          seed: userName,
+          backgroundType: ["gradientLinear", "solid"],
+          backgroundColor: ["4B50B2", "F38F2F", "1976D2"],
+          radius: 50,
+          scale: 120,
+          translateY: 5,
+        }).toString();
+
+        const bio = `Just a ${faker.word.adjective()} ${faker.animal.type()} exploring ${faker.word.noun()}`;
+        const age = faker.number.int({ min: 18, max: 45 });
+        const gender = faker.helpers.arrayElement(["male", "female", "other"]);
+
+        // 5. Create the user
         await ctx.runMutation(internal.users.createUser, {
           emailAddress: email,
           clerkId: id,
           userName,
-          imageUrl: svg || imageUrl,
+          imageUrl: avatar,
           emailVerified: true,
           followers: 0,
           following: 0,
           postsPublished: 0,
-          bio: "Hey there! I'm using Himisiri.",
-          age: 18,
-          gender: "other",
+          bio,
+          age,
+          gender,
         });
       } catch (error) {
         console.log("Error creating user", error);
