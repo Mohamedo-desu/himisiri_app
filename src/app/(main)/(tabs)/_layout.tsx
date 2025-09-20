@@ -1,6 +1,7 @@
 import CustomTabBar from "@/components/tabs/CustomTabBar";
 import { api } from "@/convex/_generated/api";
 import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
+import { APP_NAME } from "constants/device";
 import { useQuery } from "convex/react";
 import { Tabs } from "expo-router";
 import React, { createContext } from "react";
@@ -41,8 +42,8 @@ const TabsLayout = () => {
       label: "Home",
       solid: IconsSolid.HomeIcon,
       outline: IconsOutline.HomeIcon,
-      headerShown: false,
-      headerTitle: "Home",
+      headerShown: true,
+      headerTitle: APP_NAME,
     },
     {
       name: "explore",
@@ -92,6 +93,7 @@ const TabsLayout = () => {
     tabBarBadgeStyle: {
       backgroundColor: BADGE_COLOR,
     },
+    headerTitleAlign: "center",
     tabBarActiveTintColor: theme.colors.onPrimary,
     tabBarInactiveTintColor: theme.colors.grey700,
   };

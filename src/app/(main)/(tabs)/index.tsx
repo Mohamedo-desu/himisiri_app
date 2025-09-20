@@ -156,7 +156,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: theme.gap(1),
     paddingHorizontal: theme.paddingHorizontal,
     paddingBottom: rt.insets.bottom + TAB_BAR_HEIGHT + 25,
-    paddingTop: rt.insets.top + theme.gap(1),
+    paddingTop: theme.gap(2),
   },
 
   listEmptyComponent: {

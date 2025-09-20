@@ -133,7 +133,7 @@ const PostDetailsScreen = () => {
 
     return (
       <View style={styles.postContainer}>
-        <PostCard post={post} />
+        <PostCard post={post} showFullContent={true} />
         <View style={styles.commentsHeader}>
           <CustomText variant="h3" fontWeight="semibold" color="onBackground">
             Comments
@@ -256,6 +256,7 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: "center",
     alignItems: "center",
     padding: 32,
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: 16,
@@ -265,6 +266,7 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: "center",
     alignItems: "center",
     padding: 32,
+    backgroundColor: theme.colors.background,
   },
   emptyContainer: {
     justifyContent: "center",

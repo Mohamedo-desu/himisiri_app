@@ -7,12 +7,16 @@ import { formatDistanceToNowStrict } from "date-fns";
 import React, { useState } from "react";
 import {
   Alert,
+  Modal,
   Platform,
+  ScrollView,
   Share,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as IconsOutline from "react-native-heroicons/outline";
 import { SvgXml } from "react-native-svg";
 import { StyleSheet } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
@@ -24,6 +28,7 @@ type CommentCardProps = {
     content: string;
     likesCount: number;
     hasLiked: boolean;
+    editedAt?: number;
     author?: {
       _id: string;
       userName: string;
@@ -37,8 +42,16 @@ type CommentCardProps = {
 const CommentCard = ({ comment, onPress }: CommentCardProps) => {
   const { currentUser } = useUserStore();
   const [liking, setLiking] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
 
   const toggleCommentLike = useMutation(api.likes.toggleCommentLike);
+  const updateComment = useMutation(api.comments.updateComment);
+  const deleteComment = useMutation(api.comments.deleteComment);
+
+  const isMyComment =
+    currentUser && comment.author && comment.author._id === currentUser._id;
 
   const handleLike = async () => {
     if (!currentUser) {
@@ -60,6 +73,72 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
     } finally {
       setLiking(false);
     }
+  };
+
+  const handleEditComment = () => {
+    setShowMenu(false);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      if (editContent.length < 1 || editContent.length > 2000) {
+        Alert.alert(
+          "Error",
+          "Comment content must be between 1 and 2000 characters"
+        );
+        return;
+      }
+
+      await updateComment({
+        commentId: comment._id,
+        content: editContent,
+      });
+
+      setShowEditModal(false);
+      Alert.alert("Success", "Comment updated successfully!");
+    } catch (error) {
+      Alert.alert("Error", "Failed to update comment. Please try again.");
+    }
+  };
+
+  const handleDeleteComment = () => {
+    setShowMenu(false);
+    Alert.alert(
+      "Delete Comment",
+      "Are you sure you want to delete this comment? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteComment({ commentId: comment._id });
+              Alert.alert("Success", "Comment deleted successfully!");
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "Failed to delete comment. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleViewStats = () => {
+    setShowMenu(false);
+    Alert.alert(
+      "Comment Statistics",
+      `Likes: ${comment.likesCount || 0}\nCreated: ${new Date(comment._creationTime).toLocaleDateString()}${comment.editedAt ? `\nLast edited: ${new Date(comment.editedAt).toLocaleDateString()}` : ""}`
+    );
+  };
+
+  const handleShareComment = () => {
+    setShowMenu(false);
+    handleShare();
   };
 
   const handleShare = async () => {
@@ -139,6 +218,17 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
             {comment.editedAt && " • edited"}
           </Text>
         </View>
+
+        {/* Menu Button (only for my comments) */}
+        {isMyComment && (
+          <TouchableOpacity
+            onPress={() => setShowMenu(true)}
+            style={styles.menuButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <IconsOutline.EllipsisVerticalIcon size={16} color="#616161" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.content}>
@@ -178,6 +268,155 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
           </CustomText>
         </TouchableOpacity>
       </View>
+
+      {/* Edit Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.editModal}>
+            <Text style={styles.editModalTitle}>Edit Comment</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Content Input */}
+              <View style={styles.formSection}>
+                <Text style={styles.formLabel}>Content</Text>
+                <TextInput
+                  value={editContent}
+                  onChangeText={setEditContent}
+                  placeholder="What's on your mind..."
+                  placeholderTextColor="#BDBDBD"
+                  multiline
+                  numberOfLines={4}
+                  style={[styles.textInput, styles.contentInput]}
+                  maxLength={2000}
+                />
+                <Text style={styles.characterCount}>
+                  {editContent.length}/2000
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.modalButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setShowEditModal(false);
+                    // Reset values
+                    setEditContent(comment.content);
+                  }}
+                >
+                  <Text
+                    style={[styles.modalButtonText, styles.cancelButtonText]}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    styles.saveButton,
+                    editContent.length < 1 && styles.disabledButton,
+                  ]}
+                  onPress={handleSaveEdit}
+                  disabled={editContent.length < 1}
+                >
+                  <Text style={[styles.modalButtonText, styles.saveButtonText]}>
+                    Save Changes
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setShowMenu(false)}
+          activeOpacity={1}
+        >
+          <View style={styles.menuModal}>
+            <Text style={styles.menuTitle}>Comment Options</Text>
+
+            {/* Menu Options */}
+            <TouchableOpacity
+              style={styles.menuOption}
+              onPress={handleViewStats}
+            >
+              <IconsOutline.ChartBarIcon
+                size={20}
+                color="#4B50B2"
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                View Statistics
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuOption}
+              onPress={handleEditComment}
+            >
+              <IconsOutline.PencilIcon
+                size={20}
+                color="#4B50B2"
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                Edit Comment
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuOption}
+              onPress={handleShareComment}
+            >
+              <IconsOutline.ShareIcon
+                size={20}
+                color="#4B50B2"
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                Share Comment
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuOption}
+              onPress={handleDeleteComment}
+            >
+              <IconsOutline.TrashIcon
+                size={20}
+                color="#FF6B6B"
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, styles.menuTextError]}>
+                Delete Comment
+              </Text>
+            </TouchableOpacity>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              style={styles.menuCancelButton}
+              onPress={() => setShowMenu(false)}
+            >
+              <Text style={styles.menuCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </TouchableOpacity>
   );
 };
@@ -213,7 +452,7 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.onPrimary,
     fontSize: 16,
     fontWeight: "bold",
-  }, // User info
+  },
   userInfo: {
     flex: 1,
   },
@@ -281,5 +520,176 @@ const styles = StyleSheet.create((theme) => ({
   },
   actionText: {
     marginLeft: 4,
+  },
+
+  // Menu button
+  menuButton: {
+    padding: 4,
+    borderRadius: 16,
+    backgroundColor: theme.colors.grey100,
+    marginLeft: 8,
+  },
+
+  // Modal overlays
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Edit modal
+  editModal: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    width: "90%",
+    maxHeight: "70%",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: theme.colors.onSurface,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+
+  // Form sections
+  formSection: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: theme.colors.onSurface,
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: theme.colors.background,
+    borderRadius: 8,
+    padding: 12,
+    color: theme.colors.onSurface,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+  },
+  contentInput: {
+    textAlignVertical: "top",
+    minHeight: 80,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: theme.colors.grey500,
+    textAlign: "right",
+    marginTop: 4,
+  },
+
+  // Modal buttons
+  modalButtonsContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.grey100,
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  cancelButtonText: {
+    color: theme.colors.grey600,
+  },
+  saveButtonText: {
+    color: theme.colors.onPrimary,
+  },
+
+  // Menu modal
+  menuModal: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    minWidth: 250,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: theme.colors.onSurface,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+
+  // Menu options
+  menuOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  menuIcon: {
+    marginRight: 12,
+  },
+  menuText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  menuTextDefault: {
+    color: theme.colors.onSurface,
+  },
+  menuTextPrimary: {
+    color: theme.colors.primary,
+  },
+  menuTextWarning: {
+    color: theme.colors.warning || "#FFA726",
+  },
+  menuTextError: {
+    color: theme.colors.error || "#FF6B6B",
+  },
+
+  // Cancel button in menu
+  menuCancelButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.grey100,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  menuCancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: theme.colors.grey600,
   },
 }));

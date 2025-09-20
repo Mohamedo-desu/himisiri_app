@@ -29,9 +29,14 @@ type PostCardProps = {
     hasLiked: boolean;
   };
   onPress?: () => void;
+  showFullContent?: boolean;
 };
 
-const PostCard = ({ post, onPress }: PostCardProps) => {
+const PostCard = ({
+  post,
+  onPress,
+  showFullContent = false,
+}: PostCardProps) => {
   const { currentUser } = useUserStore();
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -242,13 +247,19 @@ const PostCard = ({ post, onPress }: PostCardProps) => {
 
       {/* Title */}
       {post.title && (
-        <Text style={styles.title} numberOfLines={2}>
+        <Text
+          style={styles.title}
+          numberOfLines={showFullContent ? undefined : 2}
+        >
           {post.title}
         </Text>
       )}
 
       {/* Content */}
-      <Text style={styles.content} numberOfLines={3}>
+      <Text
+        style={styles.content}
+        numberOfLines={showFullContent ? undefined : 3}
+      >
         {post.content}
       </Text>
 
