@@ -6,17 +6,42 @@ import {
   authenticatedQuery,
   optionalAuthQuery,
 } from "./customFunctions";
+import { notificationMutation } from "./notificationTriggers";
 import { rateLimitedAuthMutationMedium } from "./rateLimitedFunctions";
+import { getAuthenticatedUser } from "./users";
 
 /**
  * Create a new reply to a comment
  */
-export const createReply = rateLimitedAuthMutationMedium({
+export const createReply = notificationMutation({
   args: {
     commentId: v.id("comments"),
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Check account status
+    if (user.accountStatus === "paused") {
+      throw new Error(
+        "Your account has been temporarily paused due to multiple reports. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "suspended") {
+      throw new Error(
+        "Your account has been suspended. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "banned") {
+      throw new Error("Your account has been permanently banned.");
+    }
+
     // Verify the comment exists and is accessible
     const comment = await ctx.db.get(args.commentId);
     if (!comment) {
@@ -46,7 +71,7 @@ export const createReply = rateLimitedAuthMutationMedium({
     const replyId = await ctx.db.insert("replies", {
       commentId: args.commentId,
       postId: comment.postId,
-      authorId: ctx.user._id,
+      authorId: user._id,
       content: args.content,
       likesCount: 0,
       reportsCount: 0,

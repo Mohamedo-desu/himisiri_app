@@ -21,6 +21,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import { SvgXml } from "react-native-svg";
 import { StyleSheet } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
+import { ReportModal } from "../ui/ReportModal";
 
 type CommentCardProps = {
   comment: {
@@ -38,13 +39,19 @@ type CommentCardProps = {
     isAnonymous: boolean;
   };
   onPress?: () => void;
+  isHighlighted?: boolean;
 };
 
-const CommentCard = ({ comment, onPress }: CommentCardProps) => {
+const CommentCard = ({
+  comment,
+  onPress,
+  isHighlighted = false,
+}: CommentCardProps) => {
   const { currentUser } = useUserStore();
   const [liking, setLiking] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
 
   const toggleCommentLike = useMutation(api.likes.toggleCommentLike);
@@ -172,6 +179,39 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
     }
   };
 
+  const handleReportComment = () => {
+    setShowMenu(false);
+    setShowReportModal(true);
+  };
+
+  const handleBlockCommentUser = () => {
+    setShowMenu(false);
+    if (!comment.author?._id) return;
+
+    Alert.alert(
+      "Block User",
+      `Are you sure you want to block ${comment.author.userName}? You won't see their content anymore.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // TODO: Implement block user functionality
+              Alert.alert(
+                "User Blocked",
+                `You have blocked ${comment.author?.userName}`
+              );
+            } catch (error) {
+              Alert.alert("Error", "Failed to block user. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -195,7 +235,7 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, isHighlighted && styles.highlightedContainer]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -236,16 +276,14 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
           </Text>
         </View>
 
-        {/* Menu Button (only for my comments) */}
-        {isMyComment && (
-          <TouchableOpacity
-            onPress={() => setShowMenu(true)}
-            style={styles.menuButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <IconsOutline.EllipsisVerticalIcon size={16} color="#616161" />
-          </TouchableOpacity>
-        )}
+        {/* Menu Button */}
+        <TouchableOpacity
+          onPress={() => setShowMenu(true)}
+          style={styles.menuButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <IconsOutline.EllipsisVerticalIcon size={16} color="#616161" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -368,61 +406,111 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
             <Text style={styles.menuTitle}>Comment Options</Text>
 
             {/* Menu Options */}
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleViewStats}
-            >
-              <IconsOutline.ChartBarIcon
-                size={20}
-                color="#4B50B2"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                View Statistics
-              </Text>
-            </TouchableOpacity>
+            {isMyComment ? (
+              <>
+                {/* My Comment Options */}
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleViewStats}
+                >
+                  <IconsOutline.ChartBarIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    View Statistics
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleEditComment}
-            >
-              <IconsOutline.PencilIcon
-                size={20}
-                color="#4B50B2"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                Edit Comment
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleEditComment}
+                >
+                  <IconsOutline.PencilIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    Edit Comment
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleShareComment}
-            >
-              <IconsOutline.ShareIcon
-                size={20}
-                color="#4B50B2"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                Share Comment
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleShareComment}
+                >
+                  <IconsOutline.ShareIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    Share Comment
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleDeleteComment}
-            >
-              <IconsOutline.TrashIcon
-                size={20}
-                color="#FF6B6B"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextError]}>
-                Delete Comment
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleDeleteComment}
+                >
+                  <IconsOutline.TrashIcon
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextError]}>
+                    Delete Comment
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Other User's Comment Options */}
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleShareComment}
+                >
+                  <IconsOutline.ShareIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    Share Comment
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleReportComment}
+                >
+                  <IconsOutline.FlagIcon
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextError]}>
+                    Report Comment
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleBlockCommentUser}
+                >
+                  <IconsOutline.NoSymbolIcon
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextError]}>
+                    Block User
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Cancel Button */}
             <TouchableOpacity
@@ -434,6 +522,16 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentId={comment._id}
+        contentType="comment"
+        contentAuthorId={comment.author?._id as any}
+        contentAuthorName={comment.author?.userName}
+      />
     </TouchableOpacity>
   );
 };
@@ -455,6 +553,15 @@ const styles = StyleSheet.create((theme) => ({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  highlightedContainer: {
+    borderWidth: 3,
+    borderColor: "#007AFF", // Use a fixed blue color for testing
+    backgroundColor: "rgba(0, 122, 255, 0.1)", // Light blue background
+    shadowColor: "#007AFF",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   avatar: {
     width: 40,

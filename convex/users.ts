@@ -8,6 +8,7 @@ import {
   QueryCtx,
 } from "./_generated/server";
 import { authenticatedMutation, authenticatedQuery } from "./customFunctions";
+import { notificationMutation } from "./notificationTriggers";
 
 export const createUser = internalMutation({
   args: {
@@ -265,11 +266,16 @@ export const isFollowing = authenticatedQuery({
 });
 
 // Mutation to follow a user
-export const followUser = authenticatedMutation({
+export const followUser = notificationMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const currentUserId = ctx.user._id;
-    const currentUser = ctx.user;
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    const currentUserId = user._id;
 
     if (currentUserId === userId) {
       throw new Error("You cannot follow yourself");
@@ -307,19 +313,7 @@ export const followUser = authenticatedMutation({
 
     // Update following count for current user
     await ctx.db.patch(currentUserId, {
-      following: currentUser.following + 1,
-    });
-
-    // Create notification for the followed user
-    await ctx.db.insert("notifications", {
-      userId: userId,
-      senderId: currentUserId,
-      type: "follow",
-      title: "New Follower",
-      message: `${currentUser.userName || "Someone"} started following you`,
-      entityId: currentUserId,
-      entityType: "user",
-      isRead: false,
+      following: user.following + 1,
     });
 
     return { success: true };
@@ -327,11 +321,16 @@ export const followUser = authenticatedMutation({
 });
 
 // Mutation to unfollow a user
-export const unfollowUser = authenticatedMutation({
+export const unfollowUser = notificationMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const currentUserId = ctx.user._id;
-    const currentUser = ctx.user;
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    const currentUserId = user._id;
 
     if (currentUserId === userId) {
       throw new Error("You cannot unfollow yourself");
@@ -362,7 +361,7 @@ export const unfollowUser = authenticatedMutation({
 
     // Update following count for current user
     await ctx.db.patch(currentUserId, {
-      following: Math.max(0, currentUser.following - 1),
+      following: Math.max(0, user.following - 1),
     });
 
     return { success: true };

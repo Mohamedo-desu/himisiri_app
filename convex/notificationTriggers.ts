@@ -83,6 +83,7 @@ notificationTriggers.register("commentLikes", async (ctx, change) => {
           commentContent:
             comment.content?.substring(0, 50) +
             (comment.content && comment.content.length > 50 ? "..." : ""),
+          postId: comment.postId,
         },
       }
     );
@@ -123,6 +124,7 @@ notificationTriggers.register("replyLikes", async (ctx, change) => {
           replyContent:
             reply.content?.substring(0, 50) +
             (reply.content && reply.content.length > 50 ? "..." : ""),
+          postId: reply.postId,
         },
       }
     );
@@ -337,31 +339,33 @@ notificationTriggers.register("posts", async (ctx, change) => {
   }
 });
 
-// Create a follow notification trigger for when we implement following
 /**
  * Follow Notification Trigger
  * Sends notification when someone follows a user
- * Note: This assumes a "follows" table exists with followerId and followedId
  */
-// notificationTriggers.register("follows", async (ctx, change) => {
-//   if (change.operation === "insert" && change.newDoc) {
-//     const follow = change.newDoc;
+notificationTriggers.register("follows", async (ctx, change) => {
+  if (change.operation === "insert" && change.newDoc) {
+    const follow = change.newDoc;
 
-//     // Get the follower's info
-//     const follower = await ctx.db.get(follow.followerId);
-//     if (!follower) return;
+    // Get the follower's info
+    const follower = await ctx.db.get(follow.followerId);
+    if (!follower) return;
 
-//     await ctx.scheduler.runAfter(0, internal.pushNotifications.sendNotificationWithPush, {
-//       userId: follow.followedId,
-//       senderId: follow.followerId,
-//       type: "follow",
-//       title: "New Follower",
-//       message: `${follower.userName} started following you`,
-//       entityId: follow.followerId,
-//       entityType: "user",
-//     });
-//   }
-// });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.pushNotifications.sendNotificationWithPush,
+      {
+        userId: follow.followingId,
+        senderId: follow.followerId,
+        type: "follow",
+        title: "New Follower",
+        message: `${follower.userName} started following you`,
+        entityId: follow.followerId,
+        entityType: "user",
+      }
+    );
+  }
+});
 
 // Export the custom mutation with notification triggers enabled
 export const notificationMutation = customMutation(

@@ -21,10 +21,17 @@ import {
 import { StyleSheet } from "react-native-unistyles";
 
 const PostDetailsScreen = () => {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, highlight, type } = useLocalSearchParams<{
+    id: string;
+    highlight?: string;
+    type?: string;
+  }>();
   const router = useRouter();
   const { currentUser } = useUserStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<
+    string | null
+  >(highlight || null);
   const flatListRef = useRef<FlatList>(null);
 
   // Fetch the post details
@@ -51,6 +58,41 @@ const PostDetailsScreen = () => {
       router.back();
     }
   }, [id, router]);
+
+  // Handle highlighting effect
+  useEffect(() => {
+    if (highlightedCommentId && comments && comments.length > 0) {
+      // Find the index of the comment to highlight
+      const commentIndex = comments.findIndex(
+        (comment) => comment._id === highlightedCommentId
+      );
+
+      if (commentIndex !== -1) {
+        // Scroll to the comment after a small delay to ensure rendering is complete
+        setTimeout(() => {
+          try {
+            flatListRef.current?.scrollToIndex({
+              index: commentIndex,
+              viewPosition: 0.3, // Position comment at 30% from top
+              animated: true,
+            });
+          } catch (error) {
+            // Fallback to scrollToOffset if scrollToIndex fails
+            const estimatedOffset = commentIndex * 120; // Approximate comment height
+            flatListRef.current?.scrollToOffset({
+              offset: estimatedOffset,
+              animated: true,
+            });
+          }
+        }, 500);
+
+        // Clear the highlight after 3 seconds
+        setTimeout(() => {
+          setHighlightedCommentId(null);
+        }, 3000);
+      }
+    }
+  }, [highlightedCommentId, comments]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -83,9 +125,10 @@ const PostDetailsScreen = () => {
       <CommentCard
         comment={comment}
         onPress={() => handleCommentPress(comment._id)}
+        isHighlighted={highlightedCommentId === comment._id}
       />
     ),
-    [handleCommentPress]
+    [handleCommentPress, highlightedCommentId]
   );
 
   const renderFooter = useCallback(() => {

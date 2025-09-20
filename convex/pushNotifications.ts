@@ -1,22 +1,28 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
+import { internalAction, internalMutation } from "./_generated/server";
 
 // Send push notification using Expo's push service
-export const sendPushNotification = internalMutation({
+export const sendPushNotification = internalAction({
   args: {
     userId: v.id("users"),
     title: v.string(),
     body: v.string(),
     data: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ success: boolean; message: string; result?: any }> => {
     try {
       // Get all push tokens for this user
-      const pushTokens = await ctx.db
-        .query("pushTokens")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId))
-        .collect();
+      const pushTokens: Doc<"pushTokens">[] = await ctx.runQuery(
+        internal.pushTokens.getUserPushTokens,
+        {
+          userId: args.userId,
+        }
+      );
 
       if (pushTokens.length === 0) {
         console.log(`No push tokens found for user ${args.userId}`);
@@ -24,7 +30,7 @@ export const sendPushNotification = internalMutation({
       }
 
       // Prepare push notification payload
-      const messages = pushTokens.map((tokenDoc) => ({
+      const messages = pushTokens.map((tokenDoc: Doc<"pushTokens">) => ({
         to: tokenDoc.pushToken,
         sound: "default",
         title: args.title,
@@ -35,15 +41,18 @@ export const sendPushNotification = internalMutation({
       }));
 
       // Send push notifications via Expo's push service
-      const response = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Accept-encoding": "gzip, deflate",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(messages),
-      });
+      const response: Response = await fetch(
+        "https://exp.host/--/api/v2/push/send",
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Accept-encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(messages),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -67,7 +76,9 @@ export const sendPushNotification = internalMutation({
               ticketResult.details?.error === "InvalidCredentials")
           ) {
             // Remove invalid push token
-            await ctx.db.delete(pushTokens[i]._id);
+            await ctx.runMutation(internal.pushTokens.removePushToken, {
+              pushTokenId: pushTokens[i]._id,
+            });
             console.log(
               `Removed invalid push token: ${pushTokens[i].pushToken}`
             );

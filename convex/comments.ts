@@ -2,10 +2,12 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { authenticatedMutation, authenticatedQuery } from "./customFunctions";
+import { notificationMutation } from "./notificationTriggers";
 import {
   rateLimitedAuthMutationMedium,
   rateLimitedOptionalAuthQuery,
 } from "./rateLimitedFunctions";
+import { getAuthenticatedUser } from "./users";
 
 /**
  * Get paginated comments for a specific post with replies count
@@ -82,12 +84,35 @@ export const getPaginatedComments = rateLimitedOptionalAuthQuery({
 /**
  * Create a new comment on a post
  */
-export const createComment = rateLimitedAuthMutationMedium({
+export const createComment = notificationMutation({
   args: {
     postId: v.id("posts"),
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Check account status
+    if (user.accountStatus === "paused") {
+      throw new Error(
+        "Your account has been temporarily paused due to multiple reports. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "suspended") {
+      throw new Error(
+        "Your account has been suspended. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "banned") {
+      throw new Error("Your account has been permanently banned.");
+    }
+
     // Verify the post exists and is accessible
     const post = await ctx.db.get(args.postId);
     if (!post) {
@@ -110,7 +135,7 @@ export const createComment = rateLimitedAuthMutationMedium({
     // Create the comment
     const commentId = await ctx.db.insert("comments", {
       postId: args.postId,
-      authorId: ctx.user._id,
+      authorId: user._id,
       content: args.content,
       likesCount: 0,
       repliesCount: 0,

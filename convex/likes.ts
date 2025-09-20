@@ -1,14 +1,37 @@
 import { v } from "convex/values";
-import { rateLimitedAuthMutationHigh } from "./rateLimitedFunctions";
+import { notificationMutation } from "./notificationTriggers";
+import { getAuthenticatedUser } from "./users";
 
 /**
  * Toggle like/unlike on a post
  */
-export const togglePostLike = rateLimitedAuthMutationHigh({
+export const togglePostLike = notificationMutation({
   args: {
     postId: v.id("posts"),
   },
   handler: async (ctx, args) => {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Check account status
+    if (user.accountStatus === "paused") {
+      throw new Error(
+        "Your account has been temporarily paused due to multiple reports. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "suspended") {
+      throw new Error(
+        "Your account has been suspended. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "banned") {
+      throw new Error("Your account has been permanently banned.");
+    }
     // Get the post
     const post = await ctx.db.get(args.postId);
     if (!post) {
@@ -23,7 +46,7 @@ export const togglePostLike = rateLimitedAuthMutationHigh({
     const existingLike = await ctx.db
       .query("postLikes")
       .withIndex("by_user_post", (q: any) =>
-        q.eq("userId", ctx.user._id).eq("postId", args.postId)
+        q.eq("userId", user._id).eq("postId", args.postId)
       )
       .unique();
 
@@ -43,7 +66,7 @@ export const togglePostLike = rateLimitedAuthMutationHigh({
     } else {
       // Like: Add the like and increment count
       await ctx.db.insert("postLikes", {
-        userId: ctx.user._id,
+        userId: user._id,
         postId: args.postId,
         likedAt: Date.now(),
       });
@@ -65,11 +88,34 @@ export const togglePostLike = rateLimitedAuthMutationHigh({
 /**
  * Toggle like/unlike on a comment
  */
-export const toggleCommentLike = rateLimitedAuthMutationHigh({
+export const toggleCommentLike = notificationMutation({
   args: {
     commentId: v.id("comments"),
   },
   handler: async (ctx, args) => {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Check account status
+    if (user.accountStatus === "paused") {
+      throw new Error(
+        "Your account has been temporarily paused due to multiple reports. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "suspended") {
+      throw new Error(
+        "Your account has been suspended. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "banned") {
+      throw new Error("Your account has been permanently banned.");
+    }
+
     // Get the comment
     const comment = await ctx.db.get(args.commentId);
     if (!comment) {
@@ -84,7 +130,7 @@ export const toggleCommentLike = rateLimitedAuthMutationHigh({
     const existingLike = await ctx.db
       .query("commentLikes")
       .withIndex("by_user_comment", (q: any) =>
-        q.eq("userId", ctx.user._id).eq("commentId", args.commentId)
+        q.eq("userId", user._id).eq("commentId", args.commentId)
       )
       .unique();
 
@@ -104,7 +150,7 @@ export const toggleCommentLike = rateLimitedAuthMutationHigh({
     } else {
       // Like: Add the like and increment count
       await ctx.db.insert("commentLikes", {
-        userId: ctx.user._id,
+        userId: user._id,
         commentId: args.commentId,
         postId: comment.postId, // For easier querying
         likedAt: Date.now(),
@@ -127,11 +173,34 @@ export const toggleCommentLike = rateLimitedAuthMutationHigh({
 /**
  * Toggle like/unlike on a reply
  */
-export const toggleReplyLike = rateLimitedAuthMutationHigh({
+export const toggleReplyLike = notificationMutation({
   args: {
     replyId: v.id("replies"),
   },
   handler: async (ctx, args) => {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+
+    // Check account status
+    if (user.accountStatus === "paused") {
+      throw new Error(
+        "Your account has been temporarily paused due to multiple reports. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "suspended") {
+      throw new Error(
+        "Your account has been suspended. Please contact support."
+      );
+    }
+
+    if (user.accountStatus === "banned") {
+      throw new Error("Your account has been permanently banned.");
+    }
+
     // Get the reply
     const reply = await ctx.db.get(args.replyId);
     if (!reply) {
@@ -146,7 +215,7 @@ export const toggleReplyLike = rateLimitedAuthMutationHigh({
     const existingLike = await ctx.db
       .query("replyLikes")
       .withIndex("by_user_reply", (q: any) =>
-        q.eq("userId", ctx.user._id).eq("replyId", args.replyId)
+        q.eq("userId", user._id).eq("replyId", args.replyId)
       )
       .unique();
 
@@ -166,7 +235,7 @@ export const toggleReplyLike = rateLimitedAuthMutationHigh({
     } else {
       // Like: Add the like and increment count
       await ctx.db.insert("replyLikes", {
-        userId: ctx.user._id,
+        userId: user._id,
         replyId: args.replyId,
         commentId: reply.commentId, // For easier querying
         postId: reply.postId, // For easier querying

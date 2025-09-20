@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +14,10 @@ import {
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SvgXml } from "react-native-svg";
 import { useUnistyles } from "react-native-unistyles";
+
+type TabValue = "all" | "unread" | "mentions";
 
 interface NotificationWithSender {
   _id: Id<"notifications">;
@@ -44,6 +48,7 @@ interface NotificationWithSender {
 
 const NotificationsScreen = () => {
   const { theme } = useUnistyles();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "mentions">(
     "all"
   );
@@ -104,9 +109,9 @@ const NotificationsScreen = () => {
     return new Date(timestamp).toLocaleDateString();
   };
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const handleMarkAsRead = async (notificationId: Id<"notifications">) => {
     try {
-      // await markAsRead({ notificationId });
+      await markAsRead({ notificationId });
       console.log("Mark as read:", notificationId);
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
@@ -134,17 +139,54 @@ const NotificationsScreen = () => {
 
       // Handle navigation based on notification type and entity
       if (notification.entityType === "post" && notification.entityId) {
-        console.log("Navigate to post:", notification.entityId);
+        // Check if this is a comment notification on a post
+        if (
+          notification.type === "comment" &&
+          notification.metadata?.commentId
+        ) {
+          // This is a comment notification - highlight the comment
+          router.push(
+            `/(main)/post/${notification.entityId}?highlight=${notification.metadata.commentId}&type=comment`
+          );
+        } else {
+          // Regular post navigation (for post likes, etc.)
+          router.push(`/(main)/post/${notification.entityId}`);
+        }
       } else if (
-        notification.entityType === "comment" &&
+        (notification.entityType === "comment" ||
+          notification.entityType === "reply") &&
         notification.metadata?.postId
       ) {
-        console.log(
-          "Navigate to comment in post:",
-          notification.metadata.postId
+        // For comments, replies, and their likes - navigate to the post containing them
+        // Pass the comment/reply ID for highlighting
+        let highlightId = notification.entityId;
+
+        if (
+          notification.type === "reply" &&
+          notification.entityType === "comment"
+        ) {
+          // For replies, entityId is the parent comment ID, which is what we want to highlight
+          highlightId = notification.entityId;
+        } else if (notification.entityType === "comment") {
+          // For comment notifications (likes, new comments)
+          highlightId = notification.entityId;
+        }
+
+        router.push(
+          `/(main)/post/${notification.metadata.postId}?highlight=${highlightId}&type=${notification.entityType}`
         );
       } else if (notification.entityType === "user" && notification.entityId) {
-        console.log("Navigate to user profile:", notification.entityId);
+        // Navigate to user profile
+        router.push(`/(main)/user/${notification.entityId}`);
+      } else if (notification.type === "follow" && notification.senderId) {
+        // Navigate to the follower's profile
+        router.push(`/(main)/user/${notification.senderId}`);
+      } else {
+        // For other notification types (system notifications, etc.)
+        console.log(
+          "No specific navigation for notification type:",
+          notification.type
+        );
       }
     } catch (error) {
       console.error("Error handling notification press:", error);
@@ -228,13 +270,6 @@ const NotificationsScreen = () => {
         {[
           { id: "all", label: "All", count: notifications.length },
           { id: "unread", label: "Unread", count: unreadCount },
-          {
-            id: "mentions",
-            label: "Mentions",
-            count: notifications.filter(
-              (n) => n.type === "mention" || n.type === "reply"
-            ).length,
-          },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.id}
@@ -358,7 +393,7 @@ const NotificationsScreen = () => {
                 <Text
                   style={{
                     fontSize: 14,
-                    color: theme.colors.grey100,
+                    color: theme.colors.grey500,
                     marginBottom: 8,
                     lineHeight: 20,
                   }}
@@ -381,15 +416,30 @@ const NotificationsScreen = () => {
                     {formatTimestamp(item._creationTime)}
                   </Text>
                   {item.sender && (
-                    <Text
+                    <View
                       style={{
-                        fontSize: 12,
-                        color: theme.colors.primary,
-                        fontWeight: "500",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
                       }}
                     >
-                      {item.sender.userName}
-                    </Text>
+                      {item.sender.imageUrl && (
+                        <SvgXml
+                          xml={item.sender.imageUrl}
+                          width={16}
+                          height={16}
+                        />
+                      )}
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: theme.colors.primary,
+                          fontWeight: "500",
+                        }}
+                      >
+                        {item.sender.userName}
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { internalMutation, internalQuery, mutation } from "./_generated/server";
 import { getAuthenticatedUser } from "./users";
 
 export const registerPushToken = mutation({
@@ -91,5 +91,28 @@ export const registerPushToken = mutation({
       tokenId: pushTokenEntry,
       userId: authenticatedUser?._id,
     };
+  },
+});
+
+// Internal query to get user's push tokens (for use in actions)
+export const getUserPushTokens = internalQuery({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("pushTokens")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+  },
+});
+
+// Internal mutation to remove a push token (for use in actions)
+export const removePushToken = internalMutation({
+  args: {
+    pushTokenId: v.id("pushTokens"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.pushTokenId);
   },
 });

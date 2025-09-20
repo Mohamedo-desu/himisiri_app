@@ -18,6 +18,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SvgXml } from "react-native-svg";
 import { StyleSheet } from "react-native-unistyles";
+import { ReportModal } from "../ui/ReportModal";
 
 type PostCardProps = {
   post: POST_TABLE & {
@@ -40,6 +41,7 @@ const PostCard = ({
   const { currentUser } = useUserStore();
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title || "");
   const [editContent, setEditContent] = useState(post.content);
   const [editTags, setEditTags] = useState<string[]>(post.tags || []);
@@ -149,6 +151,39 @@ const PostCard = ({
     );
   };
 
+  const handleReportPost = () => {
+    setShowMenu(false);
+    setShowReportModal(true);
+  };
+
+  const handleBlockUser = () => {
+    setShowMenu(false);
+    if (!post.author?._id) return;
+
+    Alert.alert(
+      "Block User",
+      `Are you sure you want to block ${post.author.userName}? You won't see their posts anymore.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // TODO: Implement block user functionality
+              Alert.alert(
+                "User Blocked",
+                `You have blocked ${post.author?.userName}`
+              );
+            } catch (error) {
+              Alert.alert("Error", "Failed to block user. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getPostTypeColor = (type: string) => {
     switch (type) {
       case "confession":
@@ -249,16 +284,14 @@ const PostCard = ({
           <Text style={styles.typeBadgeText}>{post.type}</Text>
         </View>
 
-        {/* Menu Button (only for my posts) */}
-        {isMyPost && (
-          <TouchableOpacity
-            onPress={() => setShowMenu(true)}
-            style={styles.menuButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <IconsOutline.EllipsisVerticalIcon size={18} color="#616161" />
-          </TouchableOpacity>
-        )}
+        {/* Menu Button */}
+        <TouchableOpacity
+          onPress={() => setShowMenu(true)}
+          style={styles.menuButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <IconsOutline.EllipsisVerticalIcon size={18} color="#616161" />
+        </TouchableOpacity>
       </View>
 
       {/* Title */}
@@ -460,75 +493,125 @@ const PostCard = ({
             <Text style={styles.menuTitle}>Post Options</Text>
 
             {/* Menu Options */}
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleViewStats}
-            >
-              <IconsOutline.ChartBarIcon
-                size={20}
-                color="#4B50B2"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                View Statistics
-              </Text>
-            </TouchableOpacity>
+            {isMyPost ? (
+              <>
+                {/* My Post Options */}
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleViewStats}
+                >
+                  <IconsOutline.ChartBarIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    View Statistics
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleEditPost}
-            >
-              <IconsOutline.PencilIcon
-                size={20}
-                color="#4B50B2"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                Edit Post
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleEditPost}
+                >
+                  <IconsOutline.PencilIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    Edit Post
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleSharePost}
-            >
-              <IconsOutline.ShareIcon
-                size={20}
-                color="#4B50B2"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                Share Post
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleSharePost}
+                >
+                  <IconsOutline.ShareIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    Share Post
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleHidePost}
-            >
-              <IconsOutline.EyeSlashIcon
-                size={20}
-                color="#FFA726"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextWarning]}>
-                Hide from Feed
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleHidePost}
+                >
+                  <IconsOutline.EyeSlashIcon
+                    size={20}
+                    color="#FFA726"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextWarning]}>
+                    Hide from Feed
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuOption}
-              onPress={handleDeletePost}
-            >
-              <IconsOutline.TrashIcon
-                size={20}
-                color="#FF6B6B"
-                style={styles.menuIcon}
-              />
-              <Text style={[styles.menuText, styles.menuTextError]}>
-                Delete Post
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleDeletePost}
+                >
+                  <IconsOutline.TrashIcon
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextError]}>
+                    Delete Post
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Other User's Post Options */}
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleSharePost}
+                >
+                  <IconsOutline.ShareIcon
+                    size={20}
+                    color="#4B50B2"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
+                    Share Post
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleReportPost}
+                >
+                  <IconsOutline.FlagIcon
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextError]}>
+                    Report Post
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuOption}
+                  onPress={handleBlockUser}
+                >
+                  <IconsOutline.NoSymbolIcon
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.menuIcon}
+                  />
+                  <Text style={[styles.menuText, styles.menuTextError]}>
+                    Block User
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Cancel Button */}
             <TouchableOpacity
@@ -540,6 +623,16 @@ const PostCard = ({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Report Modal */}
+      <ReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        contentId={post._id}
+        contentType="post"
+        contentAuthorId={post.author?._id as any}
+        contentAuthorName={post.author?.userName}
+      />
     </TouchableOpacity>
   );
 };
