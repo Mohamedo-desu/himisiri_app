@@ -1,6 +1,11 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { authenticatedMutation, optionalAuthQuery } from "./customFunctions";
+import { query } from "./_generated/server";
+import {
+  authenticatedMutation,
+  authenticatedQuery,
+  optionalAuthQuery,
+} from "./customFunctions";
 import { rateLimitedAuthMutationMedium } from "./rateLimitedFunctions";
 
 /**
@@ -208,5 +213,113 @@ export const deleteReply = authenticatedMutation({
     }
 
     return { success: true };
+  },
+});
+
+/**
+ * Get replies by a specific user
+ */
+export const getRepliesByAuthor = authenticatedQuery({
+  args: {},
+  handler: async (ctx, args) => {
+    // Get all active replies by the current user
+    const replies = await ctx.db
+      .query("replies")
+      .withIndex("by_author", (q) => q.eq("authorId", ctx.user._id))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .order("desc")
+      .collect();
+
+    // Enrich replies with comment, post and author info
+    const enrichedReplies = await Promise.all(
+      replies.map(async (reply) => {
+        // Get comment info
+        const comment = await ctx.db.get(reply.commentId);
+        let commentInfo = null;
+        if (comment && comment.status === "active") {
+          commentInfo = {
+            _id: comment._id,
+            content:
+              comment.content.substring(0, 100) +
+              (comment.content.length > 100 ? "..." : ""),
+          };
+        }
+
+        // Get post info
+        const post = await ctx.db.get(reply.postId);
+        let postInfo = null;
+        if (post && post.status === "active") {
+          postInfo = {
+            _id: post._id,
+            title: post.title,
+            content:
+              post.content.substring(0, 100) +
+              (post.content.length > 100 ? "..." : ""),
+            type: post.type,
+          };
+        }
+
+        // Get author info (current user)
+        const author = {
+          _id: ctx.user._id,
+          userName: ctx.user.userName,
+          imageUrl: ctx.user.imageUrl,
+        };
+
+        return {
+          ...reply,
+          author,
+          comment: commentInfo,
+          post: postInfo,
+        };
+      })
+    );
+
+    // Filter out replies from deleted comments/posts
+    return enrichedReplies.filter(
+      (reply) => reply.comment !== null && reply.post !== null
+    );
+  },
+});
+
+/**
+ * Get replies by a specific user (for user profile)
+ */
+export const getRepliesByUser = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { userId }) => {
+    // Get all active replies by the specified user
+    const replies = await ctx.db
+      .query("replies")
+      .withIndex("by_author", (q) => q.eq("authorId", userId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .order("desc")
+      .collect();
+
+    // Enrich replies with author info
+    const enrichedReplies = await Promise.all(
+      replies.map(async (reply) => {
+        // Get author info
+        const author = await ctx.db.get(reply.authorId);
+        let authorInfo = null;
+        if (author) {
+          authorInfo = {
+            _id: author._id,
+            userName: author.userName,
+            imageUrl: author.imageUrl,
+          };
+        }
+
+        return {
+          ...reply,
+          author: authorInfo,
+          content: reply.content,
+        };
+      })
+    );
+
+    return enrichedReplies;
   },
 });

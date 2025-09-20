@@ -285,6 +285,20 @@ const ProfileScreen = () => {
           />
 
           <MenuButton
+            IconComponent={IconsOutline.ChatBubbleLeftIcon}
+            title="My Comments"
+            subtitle="Comments you've made"
+            onPress={() => router.push("/my-comments")}
+          />
+
+          <MenuButton
+            IconComponent={IconsOutline.ArrowUturnLeftIcon}
+            title="My Replies"
+            subtitle="Replies you've written"
+            onPress={() => router.push("/my-replies")}
+          />
+
+          <MenuButton
             IconComponent={IconsOutline.HeartIcon}
             title="Liked Posts"
             subtitle="Posts you've liked"

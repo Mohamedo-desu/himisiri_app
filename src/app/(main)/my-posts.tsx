@@ -120,7 +120,7 @@ const MyPostsScreen = () => {
           <Text
             style={{
               fontSize: 14,
-              color: theme.colors.grey100,
+              color: theme.colors.grey400,
               textAlign: "center",
             }}
           >

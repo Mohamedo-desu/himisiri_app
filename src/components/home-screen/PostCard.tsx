@@ -200,7 +200,23 @@ const PostCard = ({
       {/* Header */}
       <View style={styles.header}>
         {/* Avatar */}
-        <View style={styles.avatar}>
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => {
+            if (post.author?._id) {
+              if (post.author._id === currentUser?._id) {
+                // Navigate to own profile
+                router.push("/(main)/(tabs)/profile");
+              } else {
+                // Navigate to user details
+                router.push({
+                  pathname: "/(main)/user/[userId]",
+                  params: { userId: post.author._id },
+                });
+              }
+            }
+          }}
+        >
           {post.author?.imageUrl ? (
             <SvgXml xml={post.author.imageUrl} width={40} height={40} />
           ) : (
@@ -208,7 +224,7 @@ const PostCard = ({
               {post.author?.userName?.charAt(0).toUpperCase() || "?"}
             </Text>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* User Info */}
         <View style={styles.userInfo}>

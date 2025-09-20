@@ -12,14 +12,58 @@ import {
 import * as IconsOutline from "react-native-heroicons/outline";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUnistyles } from "react-native-unistyles";
-import PostCard from "../../components/home-screen/PostCard";
+import CommentCard from "../../components/post-details/CommentCard";
 
-const LikedPostsScreen = () => {
+const MyCommentsScreen = () => {
   const { theme } = useUnistyles();
-  const likedPosts = useQuery(api.posts.getLikedPosts, {});
+  const myComments = useQuery(api.comments.getCommentsByAuthor, {});
 
-  const renderPost = ({ item }: { item: any }) => (
-    <PostCard key={item._id} post={item} />
+  const renderComment = ({ item }: { item: any }) => (
+    <View style={{ marginBottom: 16 }}>
+      <CommentCard comment={item} />
+      {/* Post Context */}
+      {item.post && (
+        <View
+          style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 8,
+            padding: 12,
+            marginTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              color: theme.colors.grey100,
+              marginBottom: 4,
+            }}
+          >
+            Comment on:
+          </Text>
+          {item.post.title && (
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: theme.colors.onBackground,
+                marginBottom: 4,
+              }}
+            >
+              {item.post.title}
+            </Text>
+          )}
+          <Text
+            style={{
+              fontSize: 14,
+              color: theme.colors.grey100,
+              lineHeight: 18,
+            }}
+          >
+            {item.post.content}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 
   const renderEmptyState = () => (
@@ -31,7 +75,7 @@ const LikedPostsScreen = () => {
         paddingHorizontal: 32,
       }}
     >
-      <IconsOutline.HeartIcon
+      <IconsOutline.ChatBubbleLeftIcon
         size={64}
         color={theme.colors.grey100}
         style={{ marginBottom: 16 }}
@@ -45,17 +89,17 @@ const LikedPostsScreen = () => {
           marginBottom: 8,
         }}
       >
-        No Liked Posts Yet
+        No Comments Yet
       </Text>
       <Text
         style={{
           fontSize: 14,
-          color: theme.colors.grey400,
+          color: theme.colors.grey100,
           textAlign: "center",
           lineHeight: 20,
         }}
       >
-        Posts you like will appear here. Start exploring and liking posts!
+        Comments you write will appear here. Start engaging with posts!
       </Text>
     </View>
   );
@@ -93,12 +137,12 @@ const LikedPostsScreen = () => {
             flex: 1,
           }}
         >
-          Liked Posts
+          My Comments
         </Text>
       </View>
 
       {/* Content */}
-      {likedPosts === undefined ? (
+      {myComments === undefined ? (
         <View
           style={{
             flex: 1,
@@ -114,13 +158,13 @@ const LikedPostsScreen = () => {
               color: theme.colors.grey100,
             }}
           >
-            Loading liked posts...
+            Loading comments...
           </Text>
         </View>
       ) : (
         <FlatList
-          data={likedPosts}
-          renderItem={renderPost}
+          data={myComments}
+          renderItem={renderComment}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{
             flexGrow: 1,
@@ -128,11 +172,10 @@ const LikedPostsScreen = () => {
           }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={renderEmptyState}
-          ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         />
       )}
     </SafeAreaView>
   );
 };
 
-export default LikedPostsScreen;
+export default MyCommentsScreen;

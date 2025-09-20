@@ -4,6 +4,7 @@ import { useUserStore } from "@/store/useUserStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -200,7 +201,23 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
     >
       <View style={styles.header}>
         {/* Avatar */}
-        <View style={styles.avatar}>
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => {
+            if (!comment.isAnonymous && comment.author?._id) {
+              if (comment.author._id === currentUser?._id) {
+                // Navigate to own profile
+                router.push("/(main)/(tabs)/profile");
+              } else {
+                // Navigate to user details
+                router.push({
+                  pathname: "/(main)/user/[userId]",
+                  params: { userId: comment.author._id },
+                });
+              }
+            }
+          }}
+        >
           {authorImage ? (
             <SvgXml xml={authorImage} width={40} height={40} />
           ) : (
@@ -208,7 +225,7 @@ const CommentCard = ({ comment, onPress }: CommentCardProps) => {
               {displayAuthor.charAt(0).toUpperCase() || "?"}
             </Text>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* User Info */}
         <View style={styles.userInfo}>

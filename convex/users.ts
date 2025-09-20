@@ -456,3 +456,24 @@ export const updateProfile = authenticatedMutation({
     return { success: true };
   },
 });
+
+/**
+ * Get follow status between current user and another user
+ */
+export const getFollowStatus = authenticatedQuery({
+  args: {
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, { targetUserId }) => {
+    const followRecord = await ctx.db
+      .query("follows")
+      .withIndex("by_follower_following", (q) =>
+        q.eq("followerId", ctx.user._id).eq("followingId", targetUserId)
+      )
+      .unique();
+
+    return {
+      isFollowing: !!followRecord,
+    };
+  },
+});

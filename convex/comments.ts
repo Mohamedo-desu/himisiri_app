@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { authenticatedMutation } from "./customFunctions";
+import { query } from "./_generated/server";
+import { authenticatedMutation, authenticatedQuery } from "./customFunctions";
 import {
   rateLimitedAuthMutationMedium,
   rateLimitedOptionalAuthQuery,
@@ -206,5 +207,101 @@ export const deleteComment = authenticatedMutation({
     }
 
     return { success: true };
+  },
+});
+
+/**
+ * Get comments by a specific user
+ */
+export const getCommentsByAuthor = authenticatedQuery({
+  args: {},
+  handler: async (ctx, args) => {
+    // Get all active comments by the current user
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_author", (q) => q.eq("authorId", ctx.user._id))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .order("desc")
+      .collect();
+
+    // Enrich comments with post and author info
+    const enrichedComments = await Promise.all(
+      comments.map(async (comment) => {
+        // Get post info
+        const post = await ctx.db.get(comment.postId);
+        let postInfo = null;
+        if (post && post.status === "active") {
+          postInfo = {
+            _id: post._id,
+            title: post.title,
+            content:
+              post.content.substring(0, 100) +
+              (post.content.length > 100 ? "..." : ""),
+            type: post.type,
+          };
+        }
+
+        // Get author info (current user)
+        const author = {
+          _id: ctx.user._id,
+          userName: ctx.user.userName,
+          imageUrl: ctx.user.imageUrl,
+        };
+
+        return {
+          ...comment,
+          author,
+          post: postInfo,
+          hasLiked: false, // For user's own comments, we don't need to check likes
+          isAnonymous: false, // Since user said no anonymous users in their app
+        };
+      })
+    );
+
+    // Filter out comments from deleted posts
+    return enrichedComments.filter((comment) => comment.post !== null);
+  },
+});
+
+/**
+ * Get comments by a specific user (for user profile)
+ */
+export const getCommentsByUser = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { userId }) => {
+    // Get all active comments by the specified user
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_author", (q) => q.eq("authorId", userId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .order("desc")
+      .collect();
+
+    // Enrich comments with author info
+    const enrichedComments = await Promise.all(
+      comments.map(async (comment) => {
+        // Get author info
+        const author = await ctx.db.get(comment.authorId);
+        let authorInfo = null;
+        if (author) {
+          authorInfo = {
+            _id: author._id,
+            userName: author.userName,
+            imageUrl: author.imageUrl,
+          };
+        }
+
+        return {
+          ...comment,
+          author: authorInfo,
+          hasLiked: false, // For profile view, we don't need to check likes
+          isAnonymous: false, // Since user said no anonymous users in their app
+        };
+      })
+    );
+
+    return enrichedComments;
   },
 });

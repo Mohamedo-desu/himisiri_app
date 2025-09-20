@@ -11,7 +11,8 @@ const UserLayout = () => {
         headerTintColor: theme.colors.onSurface,
       }}
     >
-      <Stack.Screen name="[id]" options={{ headerTitle: "User Details" }} />
+      <Stack.Screen name="[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="[userId]" options={{ headerShown: false }} />
     </Stack>
   );
 };

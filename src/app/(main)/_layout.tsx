@@ -16,6 +16,8 @@ const MainLayout = () => {
       <Stack.Screen name="user" options={{ headerShown: false }} />
       <Stack.Screen name="my-posts" options={{ headerShown: false }} />
       <Stack.Screen name="liked-posts" options={{ headerShown: false }} />
+      <Stack.Screen name="my-comments" options={{ headerShown: false }} />
+      <Stack.Screen name="my-replies" options={{ headerShown: false }} />
     </Stack>
   );
 };
