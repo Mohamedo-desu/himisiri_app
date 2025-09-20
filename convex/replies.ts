@@ -10,7 +10,6 @@ export const createReply = rateLimitedAuthMutationMedium({
   args: {
     commentId: v.id("comments"),
     content: v.string(),
-    isAnonymous: v.boolean(),
   },
   handler: async (ctx, args) => {
     // Verify the comment exists and is accessible
@@ -44,7 +43,6 @@ export const createReply = rateLimitedAuthMutationMedium({
       postId: comment.postId,
       authorId: ctx.user._id,
       content: args.content,
-      isAnonymous: args.isAnonymous,
       likesCount: 0,
       reportsCount: 0,
       status: "active",

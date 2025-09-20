@@ -317,3 +317,79 @@ export const deletePost = authenticatedMutation({
     return { success: true };
   },
 });
+
+/**
+ * Get a single post by ID with detailed information
+ */
+export const getPostById = rateLimitedOptionalAuthQuery({
+  args: {
+    postId: v.id("posts"),
+  },
+  handler: async (ctx, args) => {
+    // Get the post
+    const post = await ctx.db.get(args.postId);
+
+    if (!post) {
+      throw new Error("Post not found");
+    }
+
+    // Check if post is accessible
+    if (post.status !== "active") {
+      // Only allow author to view hidden posts
+      if (!ctx.user || post.authorId !== ctx.user._id) {
+        throw new Error("Post not found or not accessible");
+      }
+    }
+
+    // Check visibility permissions
+    if (post.visibility === "private") {
+      if (!ctx.user || post.authorId !== ctx.user._id) {
+        throw new Error("Private post not accessible");
+      }
+    }
+    // For friends_only, we'd need to implement friendship logic
+    // For now, treat it as public if user is authenticated
+    if (post.visibility === "friends_only" && !ctx.user) {
+      throw new Error("Authentication required to view this post");
+    }
+
+    // Get author info (unless anonymous and not the current user)
+    let author = null;
+    if (post.authorId === ctx.user?._id) {
+      // Always show author info for own posts
+      author = {
+        _id: ctx.user._id,
+        userName: ctx.user.userName,
+        imageUrl: ctx.user.imageUrl,
+      };
+    } else {
+      const authorDoc = await ctx.db.get(post.authorId);
+      if (authorDoc) {
+        const userDoc = authorDoc as any;
+        author = {
+          _id: userDoc._id,
+          userName: userDoc.userName,
+          imageUrl: userDoc.imageUrl,
+        };
+      }
+    }
+
+    // Check if current user has liked this post
+    let hasLiked = false;
+    if (ctx.user) {
+      const like = await ctx.db
+        .query("postLikes")
+        .withIndex("by_user_post", (q: any) =>
+          q.eq("userId", ctx.user!._id).eq("postId", post._id)
+        )
+        .unique();
+      hasLiked = !!like;
+    }
+
+    return {
+      ...post,
+      author,
+      hasLiked,
+    };
+  },
+});

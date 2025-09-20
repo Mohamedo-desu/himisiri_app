@@ -8,6 +8,7 @@ export const BASE_GAP = 6;
 export const PRIMARY_COLOR = "#4B50B2";
 export const SECONDARY_COLOR = "#F38F2F";
 export const TERTIARY_COLOR = "#1976D2";
+export const BADGE_COLOR = "#e20909";
 
 export const Colors = {
   primary: PRIMARY_COLOR,

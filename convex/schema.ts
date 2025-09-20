@@ -154,7 +154,6 @@ export const comments = defineTable({
   postId: v.id("posts"), // The post this comment belongs to
   authorId: v.id("users"), // Author of the comment
   content: v.string(), // Comment content
-  isAnonymous: v.boolean(), // Whether the comment is anonymous
   likesCount: v.number(), // Number of likes on the comment
   repliesCount: v.number(), // Number of replies to this comment
   reportsCount: v.optional(v.number()), // Number of reports on this comment
@@ -172,8 +171,7 @@ export const replies = defineTable({
   commentId: v.id("comments"), // The comment this reply belongs to
   postId: v.id("posts"), // The original post (for easier querying)
   authorId: v.id("users"), // Author of the reply
-  content: v.string(), // Reply content
-  isAnonymous: v.boolean(), // Whether the reply is anonymous
+  content: v.string(), // Reply content // Whether the reply is anonymous
   likesCount: v.number(), // Number of likes on the reply
   reportsCount: v.optional(v.number()), // Number of reports on this reply
   status: v.union(
@@ -325,5 +323,9 @@ export default defineSchema({
 
 export type USER_TABLE = Infer<typeof users.validator> & {
   _id: Id<"users">;
+  _creationTime: number;
+};
+export type POST_TABLE = Infer<typeof posts.validator> & {
+  _id: Id<"posts">;
   _creationTime: number;
 };

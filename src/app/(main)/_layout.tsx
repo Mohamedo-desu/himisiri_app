@@ -12,6 +12,7 @@ const MainLayout = () => {
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="post" options={{ headerShown: false }} />
     </Stack>
   );
 };

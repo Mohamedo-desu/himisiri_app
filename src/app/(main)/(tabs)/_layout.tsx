@@ -8,7 +8,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { useSharedValue } from "react-native-reanimated";
 import { useUnistyles } from "react-native-unistyles";
-import { PRIMARY_COLOR } from "unistyles";
+import { BADGE_COLOR, PRIMARY_COLOR } from "unistyles";
 
 // Define NavItem type for auto-suggestions
 interface NavItem {
@@ -47,7 +47,7 @@ const TabsLayout = () => {
     {
       name: "explore",
       label: "Explore",
-      solid: IconsSolid.MagnifyingGlassIcon,
+      solid: IconsSolid.Squares2X2Icon,
       outline: IconsOutline.MagnifyingGlassIcon,
       headerShown: true,
       headerTitle: "Explore",
@@ -67,7 +67,7 @@ const TabsLayout = () => {
       outline: IconsOutline.BellIcon,
       headerShown: true,
       headerTitle: "Notifications",
-      badge: notificationCount || 0,
+      badge: notificationCount || undefined,
     },
     {
       name: "profile",
@@ -90,10 +90,10 @@ const TabsLayout = () => {
     },
     headerTintColor: theme.colors.onBackground,
     tabBarBadgeStyle: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: BADGE_COLOR,
     },
     tabBarActiveTintColor: theme.colors.onPrimary,
-    tabBarInactiveTintColor: theme.colors.grey100,
+    tabBarInactiveTintColor: theme.colors.grey700,
   };
 
   return (
@@ -119,12 +119,9 @@ const TabsLayout = () => {
                 tabBarLabel: label,
                 headerShown: headerShown,
                 headerTitle: headerTitle,
-                tabBarIcon: ({ focused, size, color }) =>
-                  focused ? (
-                    <SolidIcon size={size} color={color} />
-                  ) : (
-                    <OutlineIcon size={size} color={color} />
-                  ),
+                tabBarIcon: ({ size, color }) => (
+                  <SolidIcon size={size} color={color} />
+                ),
                 ...(badge !== undefined && { tabBarBadge: badge }),
               }}
             />
