@@ -475,3 +475,218 @@ export const getLikedPosts = authenticatedQuery({
     return likedPosts.filter((post) => post !== null);
   },
 });
+
+/**
+ * Get popular posts based on likes and engagement
+ */
+export const getPopularPosts = rateLimitedOptionalAuthQuery({
+  args: {
+    limit: v.optional(v.number()),
+    timeframe: v.optional(
+      v.union(v.literal("week"), v.literal("month"), v.literal("all"))
+    ),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 10;
+    const timeframe = args.timeframe || "week";
+
+    // Calculate time threshold
+    const now = Date.now();
+    const timeThreshold =
+      timeframe === "week"
+        ? now - 7 * 24 * 60 * 60 * 1000
+        : timeframe === "month"
+          ? now - 30 * 24 * 60 * 60 * 1000
+          : 0;
+
+    // Get all active posts within timeframe
+    let postsQuery = ctx.db
+      .query("posts")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"));
+
+    if (timeframe !== "all") {
+      postsQuery = postsQuery.filter((q: any) =>
+        q.gte(q.field("_creationTime"), timeThreshold)
+      );
+    }
+
+    const posts = await postsQuery.collect();
+
+    // Sort by engagement (likes count + comments count + replies count)
+    const postsWithEngagement = await Promise.all(
+      posts.map(async (post: any) => {
+        const likesCount = await ctx.db
+          .query("postLikes")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect()
+          .then((likes) => likes.length);
+
+        const commentsCount = await ctx.db
+          .query("comments")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect()
+          .then((comments) => comments.length);
+
+        const repliesCount = await ctx.db
+          .query("replies")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect()
+          .then((replies) => replies.length);
+
+        const engagementScore = likesCount + commentsCount * 2 + repliesCount;
+
+        return {
+          post,
+          engagementScore,
+        };
+      })
+    );
+
+    // Sort by engagement score and take top posts
+    const topPosts = postsWithEngagement
+      .sort((a, b) => b.engagementScore - a.engagementScore)
+      .slice(0, limit)
+      .map((item) => item.post);
+
+    // Enrich posts with additional data
+    const enrichedPosts = await Promise.all(
+      topPosts.map(async (post: any) => {
+        // Get author info (handle anonymous posts)
+        let author = null;
+        if (!post.isAnonymous && post.authorId) {
+          const authorDoc = await ctx.db.get(post.authorId);
+          if (authorDoc && "userName" in authorDoc) {
+            author = {
+              _id: authorDoc._id,
+              userName: authorDoc.userName,
+              imageUrl: authorDoc.imageUrl,
+            };
+          }
+        }
+
+        // Check if current user has liked this post
+        let hasLiked = false;
+        if (ctx.user) {
+          const like = await ctx.db
+            .query("postLikes")
+            .withIndex("by_user_post", (q: any) =>
+              q.eq("userId", ctx.user!._id).eq("postId", post._id)
+            )
+            .first();
+          hasLiked = !!like;
+        }
+
+        // Get likes count
+        const likesCount = await ctx.db
+          .query("postLikes")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect()
+          .then((likes) => likes.length);
+
+        return {
+          ...post,
+          author,
+          hasLiked,
+          likesCount,
+        };
+      })
+    );
+
+    return enrichedPosts;
+  },
+});
+
+/**
+ * Get trending topics from recent posts
+ */
+export const getTrendingTopics = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 6;
+
+    // Get recent posts from the last week
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    const recentPosts = await ctx.db
+      .query("posts")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"))
+      .filter((q: any) => q.gte(q.field("_creationTime"), weekAgo))
+      .collect();
+
+    // Extract and count topics from post content
+    const topicCounts = new Map<string, number>();
+
+    // Common trending topics (you can enhance this with AI/ML later)
+    const commonTopics = [
+      "love",
+      "work",
+      "family",
+      "friends",
+      "relationship",
+      "career",
+      "school",
+      "college",
+      "university",
+      "dating",
+      "marriage",
+      "divorce",
+      "money",
+      "health",
+      "mental health",
+      "anxiety",
+      "depression",
+      "stress",
+      "happiness",
+      "dreams",
+      "goals",
+      "future",
+      "past",
+      "regret",
+      "mistake",
+      "secret",
+      "confession",
+      "truth",
+      "lie",
+      "betrayal",
+      "trust",
+      "friendship",
+      "pregnancy",
+      "children",
+      "parents",
+      "siblings",
+      "boss",
+      "job",
+      "interview",
+      "promotion",
+      "travel",
+      "vacation",
+      "home",
+      "moving",
+    ];
+
+    // Count topic mentions in recent posts
+    recentPosts.forEach((post) => {
+      const content = post.content?.toLowerCase() || "";
+      commonTopics.forEach((topic) => {
+        if (content.includes(topic)) {
+          topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+        }
+      });
+    });
+
+    // Sort by count and return top topics
+    const trendingTopics = Array.from(topicCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([topic]) => topic);
+
+    // If no trending topics found, return default ones
+    if (trendingTopics.length === 0) {
+      return ["love", "work", "family", "secrets", "dreams", "regrets"];
+    }
+
+    return trendingTopics;
+  },
+});
