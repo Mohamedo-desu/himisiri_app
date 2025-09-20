@@ -205,6 +205,12 @@ export const replyLikes = defineTable({
   likedAt: v.optional(v.number()), // Timestamp when liked (optional, defaults to _creationTime)
 });
 
+export const follows = defineTable({
+  followerId: v.id("users"), // User who is following
+  followingId: v.id("users"), // User who is being followed
+  followedAt: v.optional(v.number()), // Timestamp when followed (optional, defaults to _creationTime)
+});
+
 export const userActivity = defineTable({
   userId: v.id("users"), // User performing the activity
   roomId: v.string(), // Room/context where activity is happening
@@ -292,6 +298,10 @@ export default defineSchema({
     .index("by_comment", ["commentId"])
     .index("by_post", ["postId"])
     .index("by_user_reply", ["userId", "replyId"]), // Unique constraint: one like per user per reply
+  follows: follows
+    .index("by_follower", ["followerId"])
+    .index("by_following", ["followingId"])
+    .index("by_follower_following", ["followerId", "followingId"]), // Unique constraint: one follow relationship per pair
   reportedUsers: reportedUsers
     .index("by_reporter", ["reporterId"])
     .index("by_reported_user", ["reportedUserId"])

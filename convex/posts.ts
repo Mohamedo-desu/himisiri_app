@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
+import { query } from "./_generated/server";
 import { authenticatedMutation, authenticatedQuery } from "./customFunctions";
 import {
   rateLimitedAuthMutationMedium,
@@ -391,5 +392,86 @@ export const getPostById = rateLimitedOptionalAuthQuery({
       author,
       hasLiked,
     };
+  },
+});
+
+/**
+ * Get posts by a specific author
+ */
+export const getPostsByAuthor = query({
+  args: {
+    authorId: v.id("users"),
+  },
+  handler: async (ctx, { authorId }) => {
+    // Get all active posts by the author
+    const posts = await ctx.db
+      .query("posts")
+      .withIndex("by_author", (q) => q.eq("authorId", authorId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .order("desc")
+      .collect();
+
+    // Get author info
+    const author = await ctx.db.get(authorId);
+    if (!author) {
+      return [];
+    }
+
+    // Return posts with author info
+    return posts.map((post) => ({
+      ...post,
+      author: {
+        _id: author._id,
+        userName: author.userName,
+        imageUrl: author.imageUrl,
+      },
+      hasLiked: false, // We don't track likes for this simple view
+    }));
+  },
+});
+
+/**
+ * Get posts that the current user has liked
+ */
+export const getLikedPosts = authenticatedQuery({
+  args: {},
+  handler: async (ctx, args) => {
+    // Get all likes by the current user
+    const userLikes = await ctx.db
+      .query("postLikes")
+      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
+      .order("desc")
+      .collect();
+
+    // Get all the posts that were liked
+    const likedPosts = await Promise.all(
+      userLikes.map(async (like) => {
+        const post = await ctx.db.get(like.postId);
+        if (!post || post.status !== "active") {
+          return null;
+        }
+
+        // Get author info
+        let author = null;
+        const authorDoc = await ctx.db.get(post.authorId);
+        if (authorDoc) {
+          const userDoc = authorDoc as any;
+          author = {
+            _id: userDoc._id,
+            userName: userDoc.userName,
+            imageUrl: userDoc.imageUrl,
+          };
+        }
+
+        return {
+          ...post,
+          author,
+          hasLiked: true, // Always true since these are liked posts
+        };
+      })
+    );
+
+    // Filter out null posts and return
+    return likedPosts.filter((post) => post !== null);
   },
 });

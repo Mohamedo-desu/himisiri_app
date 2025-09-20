@@ -13,7 +13,6 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as autoModerationUtils from "../autoModerationUtils.js";
 import type * as comments from "../comments.js";
 import type * as customFunctions from "../customFunctions.js";
 import type * as http from "../http.js";
@@ -39,7 +38,6 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  autoModerationUtils: typeof autoModerationUtils;
   comments: typeof comments;
   customFunctions: typeof customFunctions;
   http: typeof http;

@@ -1,8 +1,10 @@
+import { api } from "@/convex/_generated/api";
 import { useAuth } from "@clerk/clerk-expo";
+import { useQuery } from "convex/react";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
-  Image,
   ScrollView,
   Switch,
   Text,
@@ -12,30 +14,25 @@ import {
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SvgXml } from "react-native-svg";
 import { useUnistyles } from "react-native-unistyles";
+import { EditProfileModal } from "../../../components/ui/EditProfileModal";
+import { FollowersModal } from "../../../components/ui/FollowersModal";
 
 const ProfileScreen = () => {
   const { theme } = useUnistyles();
   const { signOut } = useAuth();
 
-  // You'll need to create these queries
-  // const currentUser = useQuery(api.users.getCurrentUser);
-  // const userStats = useQuery(api.users.getUserStats);
-
-  // Mock data for now
-  const currentUser = {
-    _id: "user123",
-    userName: "Anonymous User",
-    imageUrl: null,
-    bio: "Sharing my thoughts and stories anonymously",
-    postsPublished: 12,
-    followers: 45,
-    following: 23,
-    accountStatus: "active",
-  };
+  // Get current user data from convex
+  const currentUser = useQuery(api.users.getCurrentUser, {});
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const [followersModalVisible, setFollowersModalVisible] = useState(false);
+  const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
+  const [followersModalTab, setFollowersModalTab] = useState<
+    "followers" | "following"
+  >("followers");
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -52,12 +49,16 @@ const ProfileScreen = () => {
     label,
     value,
     IconComponent,
+    onPress,
   }: {
     label: string;
     value: number;
     IconComponent: React.ComponentType<{ size: number; color: string }>;
+    onPress?: () => void;
   }) => (
-    <View
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
       style={{
         backgroundColor: theme.colors.surface,
         padding: 16,
@@ -86,7 +87,7 @@ const ProfileScreen = () => {
       >
         {label}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const MenuButton = ({
@@ -176,22 +177,9 @@ const ProfileScreen = () => {
           }}
         >
           {/* Profile Image */}
-          <View
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: theme.colors.primary,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}
-          >
-            {currentUser.imageUrl ? (
-              <Image
-                source={{ uri: currentUser.imageUrl }}
-                style={{ width: 80, height: 80, borderRadius: 40 }}
-              />
+          <View>
+            {currentUser?.imageUrl ? (
+              <SvgXml xml={currentUser.imageUrl} width={100} height={100} />
             ) : (
               <IconsSolid.UserIcon size={40} color={theme.colors.onPrimary} />
             )}
@@ -206,10 +194,10 @@ const ProfileScreen = () => {
               marginBottom: 4,
             }}
           >
-            {currentUser.userName}
+            {currentUser?.userName || "Loading..."}
           </Text>
 
-          {currentUser.bio && (
+          {currentUser?.bio && (
             <Text
               style={{
                 fontSize: 14,
@@ -224,6 +212,7 @@ const ProfileScreen = () => {
 
           {/* Edit Profile Button */}
           <TouchableOpacity
+            onPress={() => setEditProfileModalVisible(true)}
             style={{
               backgroundColor: theme.colors.primary,
               paddingHorizontal: 24,
@@ -252,18 +241,26 @@ const ProfileScreen = () => {
         >
           <StatCard
             label="Posts"
-            value={currentUser.postsPublished}
+            value={currentUser?.postsPublished || 0}
             IconComponent={IconsOutline.DocumentTextIcon}
           />
           <StatCard
             label="Followers"
-            value={currentUser.followers}
-            IconComponent={IconsOutline.UserGroupIcon}
+            value={currentUser?.followers || 0}
+            IconComponent={IconsOutline.UsersIcon}
+            onPress={() => {
+              setFollowersModalTab("followers");
+              setFollowersModalVisible(true);
+            }}
           />
           <StatCard
             label="Following"
-            value={currentUser.following}
-            IconComponent={IconsOutline.HeartIcon}
+            value={currentUser?.following || 0}
+            IconComponent={IconsOutline.UserPlusIcon}
+            onPress={() => {
+              setFollowersModalTab("following");
+              setFollowersModalVisible(true);
+            }}
           />
         </View>
 
@@ -284,21 +281,14 @@ const ProfileScreen = () => {
             IconComponent={IconsOutline.DocumentTextIcon}
             title="My Posts"
             subtitle="View and manage your posts"
-            onPress={() => console.log("Navigate to My Posts")}
-          />
-
-          <MenuButton
-            IconComponent={IconsOutline.BookmarkIcon}
-            title="Saved Posts"
-            subtitle="Posts you've bookmarked"
-            onPress={() => console.log("Navigate to Saved Posts")}
+            onPress={() => router.push("/my-posts")}
           />
 
           <MenuButton
             IconComponent={IconsOutline.HeartIcon}
             title="Liked Posts"
             subtitle="Posts you've liked"
-            onPress={() => console.log("Navigate to Liked Posts")}
+            onPress={() => router.push("/liked-posts")}
           />
         </View>
 
@@ -423,6 +413,28 @@ const ProfileScreen = () => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Followers Modal */}
+      {currentUser && (
+        <FollowersModal
+          visible={followersModalVisible}
+          onClose={() => setFollowersModalVisible(false)}
+          userId={currentUser._id}
+          currentUserId={currentUser._id}
+          initialTab={followersModalTab}
+          followersCount={currentUser.followers}
+          followingCount={currentUser.following}
+        />
+      )}
+
+      {/* Edit Profile Modal */}
+      {currentUser && (
+        <EditProfileModal
+          visible={editProfileModalVisible}
+          onClose={() => setEditProfileModalVisible(false)}
+          currentUser={currentUser}
+        />
+      )}
     </SafeAreaView>
   );
 };
