@@ -41,4 +41,5 @@ yarn-error.*
 /android
 .env.sentry-build-plugin
 
+# Google Services configuration files (contains sensitive API keys)
 google-services.json
