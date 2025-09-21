@@ -3,7 +3,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import React from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Easing, Image, Text, TouchableOpacity, View } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { useUnistyles } from "react-native-unistyles";
 
@@ -130,7 +131,13 @@ export const UserCard: React.FC<UserCardProps> = ({
               color: theme.colors.grey100,
             }}
           >
-            {user.followers} followers
+            <AnimatedNumbers
+              includeComma
+              animateToNumber={user.followers}
+              fontStyle={{ fontSize: 12, color: theme.colors.grey100 }}
+              easing={Easing.out(Easing.cubic)}
+            />{" "}
+            followers
           </Text>
           <Text
             style={{
@@ -138,7 +145,13 @@ export const UserCard: React.FC<UserCardProps> = ({
               color: theme.colors.grey100,
             }}
           >
-            {user.postsPublished} posts
+            <AnimatedNumbers
+              includeComma
+              animateToNumber={user.postsPublished}
+              fontStyle={{ fontSize: 12, color: theme.colors.grey100 }}
+              easing={Easing.out(Easing.cubic)}
+            />{" "}
+            posts
           </Text>
         </View>
       </TouchableOpacity>

@@ -1,5 +1,6 @@
 import InitialLayout from "@/components/InitialLayout";
 import ToastConfig from "@/config/toast/ToastConfig";
+import { useNotificationObserver } from "@/hooks/useNotificationObserver";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import ClerkAndConvexProvider from "@/providers/ClerkAndConvexProvider";
 import UserPresenceProvider from "@/providers/UserPresenceProvider";
@@ -54,6 +55,9 @@ function RootLayout() {
   // Set up push notification registration (permissions, token, listeners, etc.)
   useSetupForPushNotifications();
 
+  // Set up notification observer for handling notification taps
+  useNotificationObserver();
+
   const { theme } = useUnistyles();
 
   // Hook Sentry into navigation container
@@ -78,7 +82,7 @@ function RootLayout() {
       <Toast
         config={ToastConfig}
         position="top"
-        topOffset={top}
+        topOffset={top + 10}
         avoidKeyboard={true}
       />
     </>

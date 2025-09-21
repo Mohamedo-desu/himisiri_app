@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Easing,
   Modal,
   Platform,
   ScrollView,
@@ -17,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import { SvgXml } from "react-native-svg";
 import Toast from "react-native-toast-message";
@@ -318,13 +320,15 @@ const CommentCard = ({
             size={18}
             color={comment.hasLiked ? "#FF6B6B" : "#666"}
           />
-          <CustomText
-            variant="caption"
-            color={comment.hasLiked ? "error" : "muted"}
-            style={styles.actionText}
-          >
-            {comment.likesCount}
-          </CustomText>
+          <AnimatedNumbers
+            includeComma
+            animateToNumber={comment.likesCount || 0}
+            fontStyle={[
+              styles.actionText,
+              comment.hasLiked && { color: "#FF6B6B" },
+            ]}
+            easing={Easing.out(Easing.cubic)}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
@@ -360,9 +364,24 @@ const CommentCard = ({
                   style={[styles.textInput, styles.contentInput]}
                   maxLength={2000}
                 />
-                <Text style={styles.characterCount}>
-                  {editContent.length}/2000
-                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: 4,
+                  }}
+                >
+                  <Text style={styles.characterCount}>
+                    <AnimatedNumbers
+                      includeComma
+                      animateToNumber={editContent.length}
+                      fontStyle={styles.characterCount}
+                      easing={Easing.out(Easing.cubic)}
+                    />
+                    /2000
+                  </Text>
+                </View>
               </View>
 
               {/* Action Buttons */}

@@ -12,12 +12,14 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Easing,
   FlatList,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
   View,
 } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import { StyleSheet } from "react-native-unistyles";
 
 const PostDetailsScreen = () => {
@@ -182,7 +184,13 @@ const PostDetailsScreen = () => {
             Comments
           </CustomText>
           <CustomText variant="caption" color="muted">
-            {comments?.length || 0} comments
+            <AnimatedNumbers
+              includeComma
+              animateToNumber={comments?.length || 0}
+              fontStyle={{ fontSize: 14, color: "#666" }}
+              easing={Easing.out(Easing.cubic)}
+            />{" "}
+            comments
           </CustomText>
         </View>
       </View>

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Easing,
   FlatList,
   ScrollView,
   Text,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -260,14 +262,15 @@ const ExploreScreen = () => {
                 <View style={styles.trendingPostMeta}>
                   <View style={styles.trendingPostStats}>
                     <IconsSolid.HeartIcon size={12} color="#FF6B6B" />
-                    <Text
-                      style={[
+                    <AnimatedNumbers
+                      includeComma
+                      animateToNumber={post.likesCount || 0}
+                      fontStyle={[
                         styles.trendingPostStat,
                         { color: theme.colors.grey500 },
                       ]}
-                    >
-                      {post.likesCount || 0}
-                    </Text>
+                      easing={Easing.out(Easing.cubic)}
+                    />
                     <IconsSolid.ChatBubbleLeftIcon size={12} color="#4ECDC4" />
                     <Text
                       style={[

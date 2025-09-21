@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Easing,
   Modal,
   ScrollView,
   Switch,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -106,16 +108,17 @@ const ProfileScreen = () => {
       }}
     >
       <IconComponent size={24} color={theme.colors.primary} />
-      <Text
-        style={{
+      <AnimatedNumbers
+        includeComma
+        animateToNumber={value}
+        fontStyle={{
           fontSize: 20,
           fontWeight: "bold",
           color: theme.colors.onBackground,
           marginTop: 8,
         }}
-      >
-        {value}
-      </Text>
+        easing={Easing.out(Easing.cubic)}
+      />
       <Text
         style={{
           fontSize: 12,

@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Easing,
   Modal,
   ScrollView,
   Text,
@@ -14,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SvgXml } from "react-native-svg";
@@ -339,7 +341,15 @@ const PostCard = ({
           ))}
           {post.tags.length > 3 && (
             <View style={styles.tag}>
-              <Text style={styles.tagText}>+{post.tags.length - 3}</Text>
+              <Text style={styles.tagText}>
+                +
+                <AnimatedNumbers
+                  includeComma
+                  animateToNumber={post.tags.length - 3}
+                  fontStyle={styles.tagText}
+                  easing={Easing.out(Easing.cubic)}
+                />
+              </Text>
             </View>
           )}
         </View>
@@ -368,11 +378,15 @@ const PostCard = ({
               style={styles.actionIcon}
             />
           )}
-          <Text
-            style={[styles.actionText, post.hasLiked && { color: "#4B50B2" }]}
-          >
-            {post.likesCount || 0}
-          </Text>
+          <AnimatedNumbers
+            includeComma
+            animateToNumber={post.likesCount || 0}
+            fontStyle={[
+              styles.actionText,
+              post.hasLiked && { color: "#4B50B2" },
+            ]}
+            easing={Easing.out(Easing.cubic)}
+          />
         </TouchableOpacity>
 
         {/* Comment Button */}
@@ -382,7 +396,12 @@ const PostCard = ({
             color="#757575"
             style={styles.actionIcon}
           />
-          <Text style={styles.actionText}>{post.commentsCount || 0}</Text>
+          <AnimatedNumbers
+            includeComma
+            animateToNumber={post.commentsCount || 0}
+            fontStyle={styles.actionText}
+            easing={Easing.out(Easing.cubic)}
+          />
         </TouchableOpacity>
 
         {/* Share Button */}
@@ -429,9 +448,24 @@ const PostCard = ({
                   style={[styles.textInput, styles.contentInput]}
                   maxLength={5000}
                 />
-                <Text style={styles.characterCount}>
-                  {editContent.length}/5000
-                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: 4,
+                  }}
+                >
+                  <Text style={styles.characterCount}>
+                    <AnimatedNumbers
+                      includeComma
+                      animateToNumber={editContent.length}
+                      fontStyle={styles.characterCount}
+                      easing={Easing.out(Easing.cubic)}
+                    />
+                    /5000
+                  </Text>
+                </View>
               </View>
 
               {/* Tags Section */}

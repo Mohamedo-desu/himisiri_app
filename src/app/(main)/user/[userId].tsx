@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Easing,
   FlatList,
   Modal,
   ScrollView,
@@ -14,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -601,15 +603,16 @@ const UserDetailsScreen = () => {
                   color={theme.colors.primary}
                   style={{ marginRight: 4 }}
                 />
-                <Text
-                  style={{
+                <AnimatedNumbers
+                  includeComma
+                  animateToNumber={userDetails.postsPublished || 0}
+                  fontStyle={{
                     fontSize: 18,
                     fontWeight: "bold",
                     color: theme.colors.onBackground,
                   }}
-                >
-                  {userDetails.postsPublished || 0}
-                </Text>
+                  easing={Easing.out(Easing.cubic)}
+                />
               </View>
               <Text style={{ fontSize: 12, color: theme.colors.grey100 }}>
                 Posts
@@ -628,15 +631,16 @@ const UserDetailsScreen = () => {
                   color={theme.colors.primary}
                   style={{ marginRight: 4 }}
                 />
-                <Text
-                  style={{
+                <AnimatedNumbers
+                  includeComma
+                  animateToNumber={userDetails.followers || 0}
+                  fontStyle={{
                     fontSize: 18,
                     fontWeight: "bold",
                     color: theme.colors.onBackground,
                   }}
-                >
-                  {userDetails.followers || 0}
-                </Text>
+                  easing={Easing.out(Easing.cubic)}
+                />
               </View>
               <Text style={{ fontSize: 12, color: theme.colors.grey100 }}>
                 Followers
@@ -655,15 +659,16 @@ const UserDetailsScreen = () => {
                   color={theme.colors.primary}
                   style={{ marginRight: 4 }}
                 />
-                <Text
-                  style={{
+                <AnimatedNumbers
+                  includeComma
+                  animateToNumber={userDetails.following || 0}
+                  fontStyle={{
                     fontSize: 18,
                     fontWeight: "bold",
                     color: theme.colors.onBackground,
                   }}
-                >
-                  {userDetails.following || 0}
-                </Text>
+                  easing={Easing.out(Easing.cubic)}
+                />
               </View>
               <Text style={{ fontSize: 12, color: theme.colors.grey100 }}>
                 Following
