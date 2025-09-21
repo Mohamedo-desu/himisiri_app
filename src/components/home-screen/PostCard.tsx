@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  DeviceEventEmitter,
   Easing,
   Modal,
   ScrollView,
@@ -62,6 +63,11 @@ const PostCard = ({
       (post.author && post.author._id === currentUser._id));
 
   const handleLike = async () => {
+    if (!currentUser) {
+      DeviceEventEmitter.emit("showLoginPrompt");
+      return;
+    }
+
     try {
       await togglePostLike({ postId: post._id });
     } catch (error) {
@@ -71,6 +77,14 @@ const PostCard = ({
         text2: "Please try again later",
       });
     }
+  };
+
+  const handleMenuPress = () => {
+    if (!currentUser) {
+      DeviceEventEmitter.emit("showLoginPrompt");
+      return;
+    }
+    setShowMenu(true);
   };
 
   const handleEditPost = () => {
@@ -340,7 +354,7 @@ const PostCard = ({
 
         {/* Menu Button */}
         <TouchableOpacity
-          onPress={() => setShowMenu(true)}
+          onPress={handleMenuPress}
           style={styles.menuButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >

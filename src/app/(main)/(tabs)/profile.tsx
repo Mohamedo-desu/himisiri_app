@@ -25,11 +25,17 @@ import { FollowersModal } from "../../../components/ui/FollowersModal";
 
 const ProfileScreen = () => {
   const { theme } = useUnistyles();
-  const { signOut } = useAuth();
+  const { signOut, isSignedIn } = useAuth();
 
-  // Get current user data from convex
-  const currentUser = useQuery(api.users.getCurrentUser, {});
-  const blockedUsers = useQuery(api.userBlocking.getBlockedUsers);
+  // Get current user data from convex - only if signed in
+  const currentUser = useQuery(
+    api.users.getCurrentUser,
+    isSignedIn ? {} : "skip"
+  );
+  const blockedUsers = useQuery(
+    api.userBlocking.getBlockedUsers,
+    isSignedIn ? undefined : "skip"
+  );
   const unblockUser = useMutation(api.userBlocking.unblockUser);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -203,6 +209,61 @@ const ProfileScreen = () => {
         ))}
     </TouchableOpacity>
   );
+
+  // Show login message if user is not authenticated
+  if (!isSignedIn) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: 16,
+              padding: 24,
+              alignItems: "center",
+              minWidth: 280,
+            }}
+          >
+            <IconsOutline.ExclamationTriangleIcon
+              size={48}
+              color={theme.colors.warning || theme.colors.primary}
+              style={{ marginBottom: 16 }}
+            />
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: theme.colors.onBackground,
+                textAlign: "center",
+                marginBottom: 8,
+              }}
+            >
+              Authentication Required
+            </Text>
+            <Text
+              style={{
+                fontSize: 16,
+                color: theme.colors.onBackground,
+                textAlign: "center",
+                opacity: 0.7,
+              }}
+            >
+              Please login to view this screen
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>

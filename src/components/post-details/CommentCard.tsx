@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  DeviceEventEmitter,
   Easing,
   Modal,
   ScrollView,
@@ -69,11 +70,7 @@ const CommentCard = ({
 
   const handleLike = async () => {
     if (!currentUser) {
-      Toast.show({
-        type: "warning",
-        text1: "Sign In Required",
-        text2: "Please sign in to like comments",
-      });
+      DeviceEventEmitter.emit("showLoginPrompt");
       return;
     }
 
@@ -91,6 +88,14 @@ const CommentCard = ({
     } finally {
       setLiking(false);
     }
+  };
+
+  const handleMenuPress = () => {
+    if (!currentUser) {
+      DeviceEventEmitter.emit("showLoginPrompt");
+      return;
+    }
+    setShowMenu(true);
   };
 
   const handleEditComment = () => {
@@ -279,7 +284,7 @@ const CommentCard = ({
 
         {/* Menu Button */}
         <TouchableOpacity
-          onPress={() => setShowMenu(true)}
+          onPress={handleMenuPress}
           style={styles.menuButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >

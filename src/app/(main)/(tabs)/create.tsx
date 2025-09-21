@@ -1,9 +1,11 @@
 import { api } from "@/convex/_generated/api";
+import { useUserStore } from "@/store/useUserStore";
 import { useMutation } from "convex/react";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  DeviceEventEmitter,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +20,7 @@ import { useUnistyles } from "react-native-unistyles";
 
 const CreateScreen = () => {
   const { theme } = useUnistyles();
+  const { currentUser } = useUserStore();
   const scrollViewRef = useRef<ScrollView>(null);
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
@@ -59,6 +62,11 @@ const CreateScreen = () => {
   };
 
   const handleSubmit = async () => {
+    if (!currentUser) {
+      DeviceEventEmitter.emit("showLoginPrompt");
+      return;
+    }
+
     if (!content.trim()) {
       Alert.alert("Error", "Please write your post content");
       return;

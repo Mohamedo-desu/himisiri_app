@@ -6,6 +6,7 @@ import { useMutation } from "convex/react";
 import React, { useRef, useState } from "react";
 import {
   Alert,
+  DeviceEventEmitter,
   Platform,
   TextInput,
   TouchableOpacity,
@@ -34,10 +35,7 @@ const CommentInput = ({
 
   const handleSubmit = async () => {
     if (!currentUser) {
-      Alert.alert(
-        "Authentication Required",
-        "Please sign in to post comments."
-      );
+      DeviceEventEmitter.emit("showLoginPrompt");
       return;
     }
 
