@@ -57,6 +57,7 @@ const CommentCard = ({
 
   const toggleCommentLike = useMutation(api.likes.toggleCommentLike);
   const updateComment = useMutation(api.comments.updateComment);
+  const blockUser = useMutation(api.userBlocking.blockUser);
   const deleteComment = useMutation(api.comments.deleteComment);
 
   const isMyComment =
@@ -183,34 +184,6 @@ const CommentCard = ({
   const handleReportComment = () => {
     setShowMenu(false);
     setShowReportModal(true);
-  };
-
-  const handleBlockCommentUser = () => {
-    setShowMenu(false);
-    if (!comment.author?._id) return;
-
-    Alert.alert(
-      "Block User",
-      `Are you sure you want to block ${comment.author.userName}? You won't see their content anymore.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Block",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // TODO: Implement block user functionality
-              Alert.alert(
-                "User Blocked",
-                `You have blocked ${comment.author?.userName}`
-              );
-            } catch (error) {
-              Alert.alert("Error", "Failed to block user. Please try again.");
-            }
-          },
-        },
-      ]
-    );
   };
 
   const formatDate = (timestamp: number) => {
@@ -508,7 +481,42 @@ const CommentCard = ({
 
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleBlockCommentUser}
+                  onPress={() => {
+                    if (comment.author?._id) {
+                      Alert.alert(
+                        "Block User",
+                        `Are you sure you want to block ${comment.author.userName}? You will no longer see their posts, comments, or replies, and they won't be able to interact with your content.`,
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Block",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                await blockUser({
+                                  userId: comment.author!._id as Id<"users">,
+                                });
+                                Alert.alert(
+                                  "Success",
+                                  `${comment.author!.userName} has been blocked`
+                                );
+                                setShowMenu(false);
+                              } catch (error) {
+                                Alert.alert(
+                                  "Error",
+                                  "Failed to block user. Please try again."
+                                );
+                                console.error("Block user error:", error);
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }
+                  }}
                 >
                   <IconsOutline.NoSymbolIcon
                     size={20}

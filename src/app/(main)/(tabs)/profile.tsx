@@ -1,10 +1,11 @@
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@clerk/clerk-expo";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Modal,
   ScrollView,
   Switch,
   Text,
@@ -25,11 +26,15 @@ const ProfileScreen = () => {
 
   // Get current user data from convex
   const currentUser = useQuery(api.users.getCurrentUser, {});
+  const blockedUsers = useQuery(api.userBlocking.getBlockedUsers);
+  const unblockUser = useMutation(api.userBlocking.unblockUser);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [followersModalVisible, setFollowersModalVisible] = useState(false);
   const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
+  const [blockedUsersModalVisible, setBlockedUsersModalVisible] =
+    useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<
     "followers" | "following"
   >("followers");
@@ -43,6 +48,31 @@ const ProfileScreen = () => {
         onPress: () => signOut(),
       },
     ]);
+  };
+
+  const handleUnblock = async (userId: string, userName: string) => {
+    Alert.alert(
+      "Unblock User",
+      `Are you sure you want to unblock ${userName}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Unblock",
+          onPress: async () => {
+            try {
+              await unblockUser({ userId: userId as any });
+              Alert.alert("Success", `${userName} has been unblocked`);
+            } catch (error) {
+              Alert.alert("Error", "Failed to unblock user. Please try again.");
+              console.error("Unblock user error:", error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const StatCard = ({
@@ -363,6 +393,17 @@ const ProfileScreen = () => {
           />
 
           <MenuButton
+            IconComponent={IconsOutline.NoSymbolIcon}
+            title="Blocked Users"
+            subtitle={
+              blockedUsers
+                ? `${blockedUsers.length} blocked users`
+                : "View and manage blocked users"
+            }
+            onPress={() => setBlockedUsersModalVisible(true)}
+          />
+
+          <MenuButton
             IconComponent={IconsOutline.UserIcon}
             title="Account Settings"
             subtitle="Email, password, and account info"
@@ -449,6 +490,184 @@ const ProfileScreen = () => {
           currentUser={currentUser}
         />
       )}
+
+      {/* Blocked Users Modal */}
+      <Modal
+        visible={blockedUsersModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setBlockedUsersModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: 12,
+              width: "100%",
+              maxWidth: 400,
+              height: 500,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: 20,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.colors.background,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "bold",
+                  color: theme.colors.onSurface || theme.colors.onBackground,
+                }}
+              >
+                Blocked Users {blockedUsers ? `(${blockedUsers.length})` : ""}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setBlockedUsersModalVisible(false)}
+                style={{ padding: 4 }}
+              >
+                <IconsOutline.XMarkIcon
+                  size={24}
+                  color={theme.colors.onSurface || theme.colors.onBackground}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={{ maxHeight: 400 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+            >
+              {/* Debug text */}
+              <Text style={{ padding: 20, color: theme.colors.onBackground }}>
+                Debug: Modal content loaded. Blocked users count:{" "}
+                {blockedUsers?.length || 0}
+              </Text>
+
+              {/* Simple blocked users list for testing */}
+              {blockedUsers && blockedUsers.length > 0 ? (
+                blockedUsers.map((user) => (
+                  <View
+                    key={user._id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      padding: 16,
+                      borderBottomWidth: 1,
+                      borderBottomColor: theme.colors.background,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: theme.colors.primary,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 12,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {user.imageUrl ? (
+                        <SvgXml xml={user.imageUrl} width={40} height={40} />
+                      ) : (
+                        <IconsSolid.UserIcon
+                          size={20}
+                          color={theme.colors.onPrimary}
+                        />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontWeight: "600",
+                          fontSize: 16,
+                          color: theme.colors.onBackground,
+                        }}
+                      >
+                        {user.userName}
+                      </Text>
+                      <Text
+                        style={{
+                          color: theme.colors.grey100,
+                          fontSize: 12,
+                          marginTop: 2,
+                        }}
+                      >
+                        Blocked{" "}
+                        {user.blockedAt
+                          ? new Date(user.blockedAt).toLocaleDateString()
+                          : "recently"}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleUnblock(user._id, user.userName)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 6,
+                        backgroundColor: "#22C55E",
+                      }}
+                    >
+                      <Text style={{ color: "white", fontWeight: "600" }}>
+                        Unblock
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              ) : (
+                <View style={{ padding: 40, alignItems: "center" }}>
+                  <IconsOutline.NoSymbolIcon
+                    size={48}
+                    color={theme.colors.grey100}
+                    style={{ marginBottom: 12 }}
+                  />
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: theme.colors.grey100,
+                      fontSize: 16,
+                      fontWeight: "600",
+                      marginBottom: 4,
+                    }}
+                  >
+                    No blocked users
+                  </Text>
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: theme.colors.grey100,
+                      fontSize: 14,
+                    }}
+                  >
+                    Users you block will appear here
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

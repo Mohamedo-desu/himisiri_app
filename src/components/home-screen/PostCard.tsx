@@ -18,6 +18,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SvgXml } from "react-native-svg";
 import { StyleSheet } from "react-native-unistyles";
+import { BlockUserButton } from "../ui/BlockUserComponents";
 import OnlineStatusIndicator from "../ui/OnlineStatusIndicator";
 import { ReportModal } from "../ui/ReportModal";
 
@@ -155,34 +156,6 @@ const PostCard = ({
   const handleReportPost = () => {
     setShowMenu(false);
     setShowReportModal(true);
-  };
-
-  const handleBlockUser = () => {
-    setShowMenu(false);
-    if (!post.author?._id) return;
-
-    Alert.alert(
-      "Block User",
-      `Are you sure you want to block ${post.author.userName}? You won't see their posts anymore.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Block",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // TODO: Implement block user functionality
-              Alert.alert(
-                "User Blocked",
-                `You have blocked ${post.author?.userName}`
-              );
-            } catch (error) {
-              Alert.alert("Error", "Failed to block user. Please try again.");
-            }
-          },
-        },
-      ]
-    );
   };
 
   const getPostTypeColor = (type: string) => {
@@ -607,19 +580,27 @@ const PostCard = ({
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={handleBlockUser}
-                >
-                  <IconsOutline.NoSymbolIcon
-                    size={20}
-                    color="#FF6B6B"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextError]}>
-                    Block User
-                  </Text>
-                </TouchableOpacity>
+                {post.author?._id && (
+                  <View style={[styles.menuOption, { paddingVertical: 8 }]}>
+                    <BlockUserButton
+                      userId={post.author._id as any}
+                      userName={post.author.userName}
+                      onBlockStatusChange={() => setShowMenu(false)}
+                      style={{
+                        backgroundColor: "transparent",
+                        borderWidth: 1,
+                        borderColor: "#FF6B6B",
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                      }}
+                      textStyle={{
+                        color: "#FF6B6B",
+                        fontSize: 14,
+                        fontWeight: "500",
+                      }}
+                    />
+                  </View>
+                )}
               </>
             )}
 

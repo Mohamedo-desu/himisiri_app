@@ -114,6 +114,27 @@ export const getPaginatedReplies = optionalAuthQuery({
       );
     }
 
+    // Get blocked user IDs if user is authenticated
+    let blockedUserIds: string[] = [];
+    if (ctx.user) {
+      const blockedByMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
+        .collect();
+
+      const blockingMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocked_user", (q) =>
+          q.eq("blockedUserId", ctx.user!._id)
+        )
+        .collect();
+
+      blockedUserIds = [
+        ...blockedByMe.map((block) => block.blockedUserId),
+        ...blockingMe.map((block) => block.blockerId),
+      ];
+    }
+
     // Query replies with pagination
     const paginatedResult = await ctx.db
       .query("replies")
@@ -122,9 +143,14 @@ export const getPaginatedReplies = optionalAuthQuery({
       .order("asc") // Chronological order for replies (oldest first)
       .paginate(args.paginationOpts);
 
+    // Filter out replies from blocked users
+    const filteredReplies = paginatedResult.page.filter(
+      (reply: any) => !blockedUserIds.includes(reply.authorId)
+    );
+
     // Enrich replies with additional data
     const enrichedReplies = await Promise.all(
-      paginatedResult.page.map(async (reply: any) => {
+      filteredReplies.map(async (reply: any) => {
         // Get author info (unless anonymous and not the current user)
         let author = null;
         if (!reply.isAnonymous || reply.authorId === ctx.user?._id) {

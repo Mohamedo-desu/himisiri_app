@@ -476,3 +476,35 @@ export const getFollowStatus = authenticatedQuery({
     };
   },
 });
+
+/**
+ * Helper function to filter out blocked users from results
+ */
+export const filterBlockedUsers = async (
+  ctx: QueryCtx | MutationCtx,
+  users: any[],
+  currentUserId: string
+) => {
+  // Get all blocked relationships involving current user
+  const blockedByMe = await ctx.db
+    .query("blockedUsers")
+    .withIndex("by_blocker", (q) => q.eq("blockerId", currentUserId as any))
+    .collect();
+
+  const blockingMe = await ctx.db
+    .query("blockedUsers")
+    .withIndex("by_blocked_user", (q) =>
+      q.eq("blockedUserId", currentUserId as any)
+    )
+    .collect();
+
+  const blockedUserIds = new Set([
+    ...blockedByMe.map((block) => block.blockedUserId),
+    ...blockingMe.map((block) => block.blockerId),
+  ]);
+
+  // Filter out blocked users
+  return users.filter(
+    (user) => !blockedUserIds.has(user._id || user.authorId || user.userId)
+  );
+};

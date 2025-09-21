@@ -28,6 +28,27 @@ export const getPaginatedComments = rateLimitedOptionalAuthQuery({
       throw new Error("Cannot access comments for hidden or removed posts");
     }
 
+    // Get blocked user IDs if user is authenticated
+    let blockedUserIds: string[] = [];
+    if (ctx.user) {
+      const blockedByMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
+        .collect();
+
+      const blockingMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocked_user", (q) =>
+          q.eq("blockedUserId", ctx.user!._id)
+        )
+        .collect();
+
+      blockedUserIds = [
+        ...blockedByMe.map((block) => block.blockedUserId),
+        ...blockingMe.map((block) => block.blockerId),
+      ];
+    }
+
     // Query comments with pagination
     const paginatedResult = await ctx.db
       .query("comments")
@@ -36,9 +57,14 @@ export const getPaginatedComments = rateLimitedOptionalAuthQuery({
       .order("desc") // Most recent first
       .paginate(args.paginationOpts);
 
+    // Filter out comments from blocked users
+    const filteredComments = paginatedResult.page.filter(
+      (comment: any) => !blockedUserIds.includes(comment.authorId)
+    );
+
     // Enrich comments with additional data
     const enrichedComments = await Promise.all(
-      paginatedResult.page.map(async (comment: any) => {
+      filteredComments.map(async (comment: any) => {
         // Get author info (unless anonymous and not the current user)
         let author = null;
         if (!comment.isAnonymous || comment.authorId === ctx.user?._id) {

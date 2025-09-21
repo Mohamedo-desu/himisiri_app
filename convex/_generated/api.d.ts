@@ -27,6 +27,7 @@ import type * as rateLimits from "../rateLimits.js";
 import type * as replies from "../replies.js";
 import type * as reports from "../reports.js";
 import type * as triggers from "../triggers.js";
+import type * as userBlocking from "../userBlocking.js";
 import type * as userPresence from "../userPresence.js";
 import type * as users from "../users.js";
 
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   replies: typeof replies;
   reports: typeof reports;
   triggers: typeof triggers;
+  userBlocking: typeof userBlocking;
   userPresence: typeof userPresence;
   users: typeof users;
 }>;

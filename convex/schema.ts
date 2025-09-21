@@ -226,6 +226,13 @@ export const follows = defineTable({
   followedAt: v.optional(v.number()), // Timestamp when followed (optional, defaults to _creationTime)
 });
 
+export const blockedUsers = defineTable({
+  blockerId: v.id("users"), // User who is blocking
+  blockedUserId: v.id("users"), // User who is being blocked
+  blockedAt: v.optional(v.number()), // Timestamp when blocked (optional, defaults to _creationTime)
+  reason: v.optional(v.string()), // Optional reason for blocking
+});
+
 export const notifications = defineTable({
   userId: v.id("users"), // User who receives the notification
   senderId: v.optional(v.id("users")), // User who triggered the notification (optional for system notifications)
@@ -314,6 +321,10 @@ export default defineSchema({
     .index("by_follower", ["followerId"])
     .index("by_following", ["followingId"])
     .index("by_follower_following", ["followerId", "followingId"]), // Unique constraint: one follow relationship per pair
+  blockedUsers: blockedUsers
+    .index("by_blocker", ["blockerId"])
+    .index("by_blocked_user", ["blockedUserId"])
+    .index("by_blocker_blocked", ["blockerId", "blockedUserId"]), // Unique constraint: one block relationship per pair
   reportedUsers: reportedUsers
     .index("by_reporter", ["reporterId"])
     .index("by_reported_user", ["reportedUserId"])

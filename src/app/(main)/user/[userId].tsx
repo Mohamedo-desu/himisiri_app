@@ -21,6 +21,7 @@ import { SvgXml } from "react-native-svg";
 import { useUnistyles } from "react-native-unistyles";
 import PostCard from "../../../components/home-screen/PostCard";
 import CommentCard from "../../../components/post-details/CommentCard";
+import { BlockUserButton } from "../../../components/ui/BlockUserComponents";
 
 const UserDetailsScreen = () => {
   const { theme } = useUnistyles();
@@ -73,6 +74,12 @@ const UserDetailsScreen = () => {
     currentUser && userId ? { targetUserId: userId as Id<"users"> } : "skip"
   );
 
+  // Check blocking status
+  const blockingStatus = useQuery(
+    api.userBlocking.getBlockingStatus,
+    currentUser && userId ? { userId: userId as Id<"users"> } : "skip"
+  );
+
   const handleFollowToggle = async () => {
     if (!userId) return;
 
@@ -114,27 +121,6 @@ const UserDetailsScreen = () => {
         [{ text: "OK" }]
       );
     }
-  };
-
-  const handleBlockUser = () => {
-    Alert.alert(
-      "Block User",
-      `Are you sure you want to block ${userDetails?.userName}? They will no longer be able to interact with your content.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Block",
-          style: "destructive",
-          onPress: () => {
-            // TODO: Implement block functionality when it's available
-            Alert.alert(
-              "Feature Coming Soon",
-              "Block functionality will be available in a future update."
-            );
-          },
-        },
-      ]
-    );
   };
 
   const isOwnProfile = currentUser?._id === userId;
@@ -403,26 +389,23 @@ const UserDetailsScreen = () => {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowUserMenu(false);
-                    handleBlockUser();
-                  }}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 12,
-                  }}
-                >
-                  <IconsOutline.NoSymbolIcon
-                    size={18}
-                    color={theme.colors.error}
-                    style={{ marginRight: 8 }}
+                <View style={{ padding: 12 }}>
+                  <BlockUserButton
+                    userId={userId as Id<"users">}
+                    userName={userDetails?.userName}
+                    onBlockStatusChange={() => setShowUserMenu(false)}
+                    style={{
+                      backgroundColor: "transparent",
+                      borderWidth: 1,
+                      borderColor: theme.colors.error,
+                      paddingVertical: 8,
+                    }}
+                    textStyle={{
+                      color: theme.colors.error,
+                      fontSize: 16,
+                    }}
                   />
-                  <Text style={{ color: theme.colors.error, fontSize: 16 }}>
-                    Block User
-                  </Text>
-                </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -539,7 +522,7 @@ const UserDetailsScreen = () => {
                 View Profile
               </Text>
             </TouchableOpacity>
-          ) : (
+          ) : blockingStatus?.canInteract ? (
             <TouchableOpacity
               onPress={handleFollowToggle}
               style={{
@@ -581,6 +564,26 @@ const UserDetailsScreen = () => {
                 {followStatus?.isFollowing ? "Unfollow" : "Follow"}
               </Text>
             </TouchableOpacity>
+          ) : (
+            <View
+              style={{
+                backgroundColor: theme.colors.surface,
+                paddingHorizontal: 24,
+                paddingVertical: 8,
+                borderRadius: 20,
+                opacity: 0.6,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.onSurface,
+                  fontWeight: "600",
+                  textAlign: "center",
+                }}
+              >
+                {blockingStatus?.isBlocked ? "User Blocked" : "Cannot Interact"}
+              </Text>
+            </View>
           )}
 
           {/* Stats */}

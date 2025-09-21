@@ -92,6 +92,27 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     ),
   },
   handler: async (ctx, args) => {
+    // Get blocked user IDs if user is authenticated
+    let blockedUserIds: string[] = [];
+    if (ctx.user) {
+      const blockedByMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
+        .collect();
+
+      const blockingMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocked_user", (q) =>
+          q.eq("blockedUserId", ctx.user!._id)
+        )
+        .collect();
+
+      blockedUserIds = [
+        ...blockedByMe.map((block) => block.blockedUserId),
+        ...blockingMe.map((block) => block.blockerId),
+      ];
+    }
+
     let query = ctx.db
       .query("posts")
       .withIndex("by_creation_time") // Use creation time for chronological order
@@ -116,9 +137,14 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
       .order("desc") // Most recent first
       .paginate(args.paginationOpts);
 
+    // Filter out posts from blocked users
+    const filteredPosts = paginatedResult.page.filter(
+      (post: any) => !blockedUserIds.includes(post.authorId)
+    );
+
     // Enrich posts with additional data
     const enrichedPosts = await Promise.all(
-      paginatedResult.page.map(async (post: any) => {
+      filteredPosts.map(async (post: any) => {
         // Get author info (unless anonymous and not the current user)
         let author = null;
         if (!post.isAnonymous || post.authorId === ctx.user?._id) {
@@ -495,6 +521,27 @@ export const getPopularPosts = rateLimitedOptionalAuthQuery({
     const limit = args.limit || 10;
     const timeframe = args.timeframe || "week";
 
+    // Get blocked user IDs if user is authenticated
+    let blockedUserIds: string[] = [];
+    if (ctx.user) {
+      const blockedByMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
+        .collect();
+
+      const blockingMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocked_user", (q) =>
+          q.eq("blockedUserId", ctx.user!._id)
+        )
+        .collect();
+
+      blockedUserIds = [
+        ...blockedByMe.map((block) => block.blockedUserId),
+        ...blockingMe.map((block) => block.blockerId),
+      ];
+    }
+
     // Calculate time threshold
     const now = Date.now();
     let timeThreshold = 0;
@@ -526,7 +573,12 @@ export const getPopularPosts = rateLimitedOptionalAuthQuery({
       );
     }
 
-    const posts = await postsQuery.collect();
+    const allPosts = await postsQuery.collect();
+
+    // Filter out posts from blocked users
+    const posts = allPosts.filter(
+      (post: any) => !blockedUserIds.includes(post.authorId)
+    );
 
     // Advanced engagement scoring with multiple factors
     const postsWithEngagement = await Promise.all(
@@ -669,6 +721,27 @@ export const getTrendingPosts = rateLimitedOptionalAuthQuery({
     const limit = args.limit || 5;
     const timeframe = args.timeframe || "day";
 
+    // Get blocked user IDs if user is authenticated
+    let blockedUserIds: string[] = [];
+    if (ctx.user) {
+      const blockedByMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
+        .collect();
+
+      const blockingMe = await ctx.db
+        .query("blockedUsers")
+        .withIndex("by_blocked_user", (q) =>
+          q.eq("blockedUserId", ctx.user!._id)
+        )
+        .collect();
+
+      blockedUserIds = [
+        ...blockedByMe.map((block) => block.blockedUserId),
+        ...blockingMe.map((block) => block.blockerId),
+      ];
+    }
+
     const now = Date.now();
     const timeThreshold =
       timeframe === "day"
@@ -676,11 +749,16 @@ export const getTrendingPosts = rateLimitedOptionalAuthQuery({
         : now - 7 * 24 * 60 * 60 * 1000;
 
     // Get recent posts
-    const recentPosts = await ctx.db
+    const allRecentPosts = await ctx.db
       .query("posts")
       .withIndex("by_status", (q: any) => q.eq("status", "active"))
       .filter((q: any) => q.gte(q.field("_creationTime"), timeThreshold))
       .collect();
+
+    // Filter out posts from blocked users
+    const recentPosts = allRecentPosts.filter(
+      (post: any) => !blockedUserIds.includes(post.authorId)
+    );
 
     // Calculate trending scores based on velocity
     const postsWithTrendingScore = await Promise.all(
