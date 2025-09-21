@@ -126,11 +126,12 @@ const PostDetailsScreen = () => {
     ({ item: comment }: { item: any }) => (
       <CommentCard
         comment={comment}
+        postId={id}
         onPress={() => handleCommentPress(comment._id)}
         isHighlighted={highlightedCommentId === comment._id}
       />
     ),
-    [handleCommentPress, highlightedCommentId]
+    [handleCommentPress, highlightedCommentId, id]
   );
 
   const renderFooter = useCallback(() => {

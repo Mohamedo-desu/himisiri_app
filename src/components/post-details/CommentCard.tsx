@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useUserStore } from "@/store/useUserStore";
+import { shareComment } from "@/utils/shareUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -10,9 +11,7 @@ import {
   Alert,
   Easing,
   Modal,
-  Platform,
   ScrollView,
-  Share,
   Text,
   TextInput,
   TouchableOpacity,
@@ -42,12 +41,14 @@ type CommentCardProps = {
     } | null;
     isAnonymous: boolean;
   };
+  postId?: string; // Post ID for sharing functionality
   onPress?: () => void;
   isHighlighted?: boolean;
 };
 
 const CommentCard = ({
   comment,
+  postId,
   onPress,
   isHighlighted = false,
 }: CommentCardProps) => {
@@ -168,39 +169,22 @@ const CommentCard = ({
     });
   };
 
-  const handleShareComment = () => {
+  const handleShareComment = async () => {
     setShowMenu(false);
-    handleShare();
-  };
 
-  const handleShare = async () => {
     try {
-      const shareContent = {
-        title: "Comment from Himisiri",
-        message: `Check out this comment: "${comment.content.substring(0, 100)}${
-          comment.content.length > 100 ? "..." : ""
-        }"`,
-      };
+      const authorName = comment.isAnonymous
+        ? "Anonymous"
+        : comment.author?.userName || "Unknown User";
 
-      if (Platform.OS === "web") {
-        if (navigator.share) {
-          await navigator.share({
-            title: shareContent.title,
-            text: shareContent.message,
-          });
-        } else {
-          await navigator.clipboard.writeText(shareContent.message);
-          Toast.show({
-            type: "success",
-            text1: "Copied to Clipboard",
-            text2: "Comment has been copied successfully",
-          });
-        }
+      if (postId) {
+        // Use deep link share if postId is available
+        await shareComment(postId, comment._id, comment.content, authorName);
       } else {
-        await Share.share({
-          title: shareContent.title,
-          message: shareContent.message,
-        });
+        // Fallback to generic content share if no postId
+        const shareMessage = `Check out this comment by ${authorName} on Himisiri:\n\n"${comment.content}"`;
+        const { shareGenericContent } = await import("@/utils/shareUtils");
+        await shareGenericContent(shareMessage, "Comment from Himisiri");
       }
     } catch (error) {
       Toast.show({
@@ -209,6 +193,10 @@ const CommentCard = ({
         text2: "Unable to share comment at the moment",
       });
     }
+  };
+
+  const handleShare = async () => {
+    await handleShareComment();
   };
 
   const handleReportComment = () => {

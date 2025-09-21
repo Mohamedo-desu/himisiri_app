@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { POST_TABLE } from "@/convex/schema";
 import { useUserStore } from "@/store/useUserStore";
+import { sharePost } from "@/utils/shareUtils";
 import { useMutation } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { router } from "expo-router";
@@ -171,13 +172,47 @@ const PostCard = ({
     ]);
   };
 
-  const handleSharePost = () => {
+  const handleSharePost = async () => {
     setShowMenu(false);
-    Toast.show({
-      type: "info",
-      text1: "Share Feature",
-      text2: "Coming soon! We're working on sharing functionality",
-    });
+    console.log("Share button clicked for post:", post._id);
+
+    // Simple test first
+    Alert.alert("Share Test", "Share button was clicked!");
+
+    try {
+      if (typeof sharePost !== "function") {
+        console.error("sharePost is not a function:", sharePost);
+        Toast.show({
+          type: "error",
+          text1: "Share Failed",
+          text2: "Share function not available",
+        });
+        return;
+      }
+
+      const result = await sharePost(
+        post._id,
+        post.title,
+        post.content,
+        post.author?.userName || "Anonymous"
+      );
+      console.log("Share result:", result);
+
+      if (result) {
+        Toast.show({
+          type: "success",
+          text1: "Shared Successfully",
+          text2: "Post has been shared",
+        });
+      }
+    } catch (error) {
+      console.error("Share error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Share Failed",
+        text2: "Unable to share post at the moment",
+      });
+    }
   };
 
   const handleViewStats = () => {
@@ -405,7 +440,7 @@ const PostCard = ({
         </TouchableOpacity>
 
         {/* Share Button */}
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
           <IconsOutline.ShareIcon size={18} color="#757575" />
         </TouchableOpacity>
       </View>

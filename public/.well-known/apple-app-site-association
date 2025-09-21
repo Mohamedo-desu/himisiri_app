@@ -3,13 +3,21 @@
     "details": [
       {
         "appIDs": [
-          "TEAM_ID.com.mohamedodesu.himisiri_app",
-          "TEAM_ID.com.mohamedodesu.himisiri_app.dev"
+          "TEAM_ID.com.mohamedodesu.himisiri",
+          "TEAM_ID.com.mohamedodesu.himisiri.dev"
         ],
         "components": [
           {
-            "/": "*",
-            "comment": "Matches all routes"
+            "/": "/main/post/*",
+            "comment": "Deep link to specific posts"
+          },
+          {
+            "/": "/main/user/*",
+            "comment": "Deep link to user profiles"
+          },
+          {
+            "/": "/main/*",
+            "comment": "Deep link to main app sections"
           }
         ]
       }
@@ -17,8 +25,8 @@
   },
   "webcredentials": {
     "apps": [
-      "TEAM_ID.com.mohamedodesu.himisiri_app",
-      "TEAM_ID.com.mohamedodesu.himisiri_app.dev"
+      "TEAM_ID.com.mohamedodesu.himisiri",
+      "TEAM_ID.com.mohamedodesu.himisiri.dev"
     ]
   }
 }

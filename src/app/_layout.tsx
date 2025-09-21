@@ -4,6 +4,7 @@ import { useNotificationObserver } from "@/hooks/useNotificationObserver";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import ClerkAndConvexProvider from "@/providers/ClerkAndConvexProvider";
 import UserPresenceProvider from "@/providers/UserPresenceProvider";
+import { setupDeepLinking } from "@/utils/deepLinkHandler";
 import { handleExpoUpdateMetadata } from "@/utils/expoUpdateMetadata";
 import * as Sentry from "@sentry/react-native";
 import { isRunningInExpoGo } from "expo";
@@ -57,6 +58,12 @@ function RootLayout() {
 
   // Set up notification observer for handling notification taps
   useNotificationObserver();
+
+  // Set up deep link handling
+  useEffect(() => {
+    const cleanup = setupDeepLinking();
+    return cleanup;
+  }, []);
 
   const { theme } = useUnistyles();
 
