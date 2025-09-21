@@ -453,6 +453,24 @@ const PostCard = ({
           />
         </TouchableOpacity>
 
+        {/* View Count */}
+        <TouchableOpacity style={styles.actionButton} disabled>
+          <IconsOutline.EyeIcon
+            size={18}
+            color="#757575"
+            style={styles.actionIcon}
+          />
+          <AnimatedNumbers
+            includeComma
+            animateToNumber={post.viewsCount || 0}
+            fontStyle={styles.actionText}
+            easing={Easing.out(Easing.cubic)}
+          />
+        </TouchableOpacity>
+
+        {/* Spacer to push share button to the right */}
+        <View style={{ flex: 1 }} />
+
         {/* Share Button */}
         <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
           <IconsOutline.ShareIcon size={18} color="#757575" />
@@ -869,7 +887,6 @@ const styles = StyleSheet.create((theme) => ({
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: theme.colors.grey100,
@@ -880,8 +897,9 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     borderRadius: 8,
+    minWidth: 60, // Ensure consistent minimum width
   },
   actionIcon: {
     marginRight: 6,

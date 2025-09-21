@@ -147,6 +147,7 @@ export const posts = defineTable({
   tags: v.optional(v.array(v.string())), // Tags for categorization
   likesCount: v.number(), // Number of likes
   commentsCount: v.number(), // Number of comments
+  viewsCount: v.optional(v.number()), // Number of unique views
   reportsCount: v.optional(v.number()), // Number of reports on this post
   status: v.union(
     v.literal("active"),
@@ -263,6 +264,14 @@ export const notifications = defineTable({
   metadata: v.optional(v.any()), // Additional data specific to notification type
 });
 
+export const postViews = defineTable({
+  userId: v.id("users"), // User who viewed the post
+  postId: v.id("posts"), // The post that was viewed
+  viewedAt: v.optional(v.number()), // Timestamp when viewed (optional, defaults to _creationTime)
+  viewDuration: v.optional(v.number()), // How long the post was in view (in milliseconds)
+  viewCount: v.optional(v.number()), // Number of times this user viewed this post (for analytics)
+});
+
 export default defineSchema({
   ...rateLimitTables,
   users: users
@@ -346,6 +355,11 @@ export default defineSchema({
     .index("by_read_status", ["isRead"])
     .index("by_user_read", ["userId", "isRead"])
     .index("by_entity", ["entityId", "entityType"]),
+  postViews: postViews
+    .index("by_user", ["userId"])
+    .index("by_post", ["postId"])
+    .index("by_user_post", ["userId", "postId"]) // Unique constraint: one view record per user per post
+    .index("by_viewed_at", ["viewedAt"]),
 });
 
 export type USER_TABLE = Infer<typeof users.validator> & {

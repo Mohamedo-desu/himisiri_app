@@ -90,10 +90,14 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
         v.literal("friends_only")
       )
     ),
+    includeViewed: v.optional(v.boolean()), // Allow client to request viewed posts
   },
   handler: async (ctx, args) => {
     // Get blocked user IDs if user is authenticated
     let blockedUserIds: string[] = [];
+    // Get viewed post IDs if user is authenticated
+    let viewedPostIds: string[] = [];
+
     if (ctx.user) {
       const blockedByMe = await ctx.db
         .query("blockedUsers")
@@ -111,6 +115,14 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
         ...blockedByMe.map((block) => block.blockedUserId),
         ...blockingMe.map((block) => block.blockerId),
       ];
+
+      // Get posts the user has already viewed
+      const viewedPosts = await ctx.db
+        .query("postViews")
+        .withIndex("by_user", (q) => q.eq("userId", ctx.user!._id))
+        .collect();
+
+      viewedPostIds = viewedPosts.map((view) => view.postId);
     }
 
     let query = ctx.db
@@ -137,10 +149,63 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
       .order("desc") // Most recent first
       .paginate(args.paginationOpts);
 
-    // Filter out posts from blocked users
-    const filteredPosts = paginatedResult.page.filter(
+    // Filter out posts from blocked users first
+    const postsFromNonBlockedUsers = paginatedResult.page.filter(
       (post: any) => !blockedUserIds.includes(post.authorId)
     );
+
+    // Separate viewed and non-viewed posts
+    const nonViewedPosts = postsFromNonBlockedUsers.filter(
+      (post: any) => !viewedPostIds.includes(post._id)
+    );
+
+    const viewedPosts = postsFromNonBlockedUsers.filter((post: any) =>
+      viewedPostIds.includes(post._id)
+    );
+
+    // Determine which posts to return based on availability and preferences
+    let filteredPosts: any[];
+    let isDoneState = paginatedResult.isDone;
+    let fallbackToViewed = false;
+
+    // Strategy 1: If client explicitly wants viewed posts
+    if (args.includeViewed === true) {
+      filteredPosts = postsFromNonBlockedUsers; // Include both viewed and non-viewed
+      console.log(
+        `Client requested all posts including viewed: ${filteredPosts.length} posts`
+      );
+    }
+    // Strategy 2: Default behavior - prefer non-viewed, fallback to viewed
+    else {
+      if (nonViewedPosts.length > 0) {
+        // Prefer non-viewed posts
+        filteredPosts = nonViewedPosts;
+
+        // Check if we should supplement with viewed posts to meet requested count
+        const requestedCount = args.paginationOpts.numItems || 10;
+        if (filteredPosts.length < requestedCount && viewedPosts.length > 0) {
+          const additionalViewedPosts = viewedPosts.slice(
+            0,
+            requestedCount - nonViewedPosts.length
+          );
+          filteredPosts = [...nonViewedPosts, ...additionalViewedPosts];
+          console.log(
+            `Supplementing ${nonViewedPosts.length} non-viewed posts with ${additionalViewedPosts.length} viewed posts`
+          );
+        }
+      } else if (viewedPosts.length > 0) {
+        // Fall back to viewed posts if no non-viewed posts available
+        filteredPosts = viewedPosts;
+        fallbackToViewed = true;
+        console.log(
+          `No non-viewed posts available, returning ${viewedPosts.length} viewed posts as fallback`
+        );
+      } else {
+        // No posts available from non-blocked users
+        filteredPosts = [];
+        console.log(`No posts available from non-blocked users`);
+      }
+    }
 
     // Enrich posts with additional data
     const enrichedPosts = await Promise.all(
@@ -184,6 +249,90 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     return {
       ...paginatedResult,
       page: enrichedPosts,
+      isDone: isDoneState && filteredPosts.length === 0, // Override isDone logic
+      metadata: {
+        totalFilteredPosts: filteredPosts.length,
+        nonViewedPostsCount: nonViewedPosts.length,
+        viewedPostsCount: viewedPosts.length,
+        blockedUsersFiltered: blockedUserIds.length,
+        strategy:
+          args.includeViewed === true
+            ? "include_all"
+            : fallbackToViewed
+              ? "fallback_to_viewed"
+              : "prefer_non_viewed",
+        isAuthenticated: !!ctx.user,
+      },
+    };
+  },
+});
+
+/**
+ * Check if there are non-viewed posts available for the current user
+ * Useful for client-side logic to decide when to request viewed posts
+ */
+export const hasNonViewedPosts = authenticatedQuery({
+  args: {
+    type: v.optional(
+      v.union(
+        v.literal("confession"),
+        v.literal("story"),
+        v.literal("question"),
+        v.literal("advice"),
+        v.literal("other")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Get blocked user IDs
+    const blockedByMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user._id))
+      .collect();
+
+    const blockingMe = await ctx.db
+      .query("blockedUsers")
+      .withIndex("by_blocked_user", (q) => q.eq("blockedUserId", ctx.user._id))
+      .collect();
+
+    const blockedUserIds = [
+      ...blockedByMe.map((block) => block.blockedUserId),
+      ...blockingMe.map((block) => block.blockerId),
+    ];
+
+    // Get viewed post IDs
+    const viewedPosts = await ctx.db
+      .query("postViews")
+      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
+      .collect();
+
+    const viewedPostIds = viewedPosts.map((view) => view.postId);
+
+    let query = ctx.db
+      .query("posts")
+      .withIndex("by_creation_time")
+      .filter((q: any) => q.eq(q.field("status"), "active"))
+      .filter((q: any) => q.eq(q.field("visibility"), "public"));
+
+    // Filter by type if specified
+    if (args.type) {
+      query = query.filter((q: any) => q.eq(q.field("type"), args.type));
+    }
+
+    // Get first few posts to check
+    const recentPosts = await query.order("desc").take(20);
+
+    // Check if any non-viewed posts exist from non-blocked users
+    const nonViewedPosts = recentPosts.filter(
+      (post: any) =>
+        !blockedUserIds.includes(post.authorId) &&
+        !viewedPostIds.includes(post._id)
+    );
+
+    return {
+      hasNonViewedPosts: nonViewedPosts.length > 0,
+      nonViewedCount: nonViewedPosts.length,
+      totalRecentPosts: recentPosts.length,
     };
   },
 });
@@ -233,6 +382,7 @@ export const createPost = rateLimitedAuthMutationMedium({
       tags: args.tags,
       likesCount: 0,
       commentsCount: 0,
+      viewsCount: 0,
       reportsCount: 0,
       status: "active",
       visibility: args.visibility,
