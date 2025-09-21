@@ -30,6 +30,11 @@ export const users = defineTable({
   ),
   pausedAt: v.optional(v.number()),
   pauseReason: v.optional(v.string()),
+  // Online status fields
+  isOnline: v.optional(v.boolean()),
+  lastSeenAt: v.optional(v.number()),
+  lastActiveAt: v.optional(v.number()),
+  sessionId: v.optional(v.string()),
 });
 export const userCounts = defineTable({
   count: v.number(),
@@ -37,17 +42,27 @@ export const userCounts = defineTable({
 export const pushTokens = defineTable({
   userId: v.optional(v.id("users")),
   pushToken: v.string(),
-  deviceId: v.string(),
-  platform: v.string(),
-  deviceName: v.string(),
-  deviceType: v.string(),
-  modelName: v.string(),
-  brand: v.string(),
-  manufacturer: v.string(),
-  osName: v.string(),
-  osVersion: v.string(),
+  deviceId: v.string(), // Consistent deviceId across all tables
   timestamp: v.string(),
 });
+
+export const userSessions = defineTable({
+  userId: v.id("users"),
+  clerkSessionId: v.string(), // Use Clerk's session ID as the primary identifier
+  deviceId: v.string(), // Consistent deviceId across all tables
+  status: v.union(
+    v.literal("logged_in"), // User is logged in and app is active
+    v.literal("app_background"), // User is logged in but app is in background
+    v.literal("logged_out") // User has logged out
+  ),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  expiresAt: v.optional(v.number()),
+})
+  .index("by_user", ["userId"])
+  .index("by_clerk_session", ["clerkSessionId"])
+  .index("by_user_status", ["userId", "status"])
+  .index("by_updated", ["updatedAt"]);
 
 export const appVersions = defineTable({
   version: v.string(),
@@ -211,14 +226,6 @@ export const follows = defineTable({
   followedAt: v.optional(v.number()), // Timestamp when followed (optional, defaults to _creationTime)
 });
 
-export const userActivity = defineTable({
-  userId: v.id("users"), // User performing the activity
-  roomId: v.string(), // Room/context where activity is happening
-  activity: v.string(), // "typing", "browsing", "posting", "commenting", "idle"
-  isTyping: v.boolean(), // Whether user is currently typing
-  timestamp: v.number(), // When this activity was recorded
-});
-
 export const notifications = defineTable({
   userId: v.id("users"), // User who receives the notification
   senderId: v.optional(v.id("users")), // User who triggered the notification (optional for system notifications)
@@ -257,12 +264,17 @@ export default defineSchema({
     .index("by_gender", ["gender"])
     .index("by_age", ["age"])
     .index("by_account_status", ["accountStatus"])
-    .index("by_report_count", ["reportCount"]),
+    .index("by_report_count", ["reportCount"])
+    .index("by_online_status", ["isOnline"])
+    .index("by_last_seen", ["lastSeenAt"])
+    .index("by_last_active", ["lastActiveAt"])
+    .index("by_session", ["sessionId"]),
   userCounts: userCounts,
   pushTokens: pushTokens
     .index("by_user", ["userId"])
     .index("by_deviceId", ["deviceId"])
     .index("by_push_token", ["pushToken"]),
+  userSessions: userSessions,
   appVersions: appVersions
     .index("by_version", ["version"])
     .index("by_type", ["type"]),
@@ -316,12 +328,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_reason", ["reason"])
     .index("by_reviewer", ["reviewedBy"]),
-  userActivity: userActivity
-    .index("by_user", ["userId"])
-    .index("by_room", ["roomId"])
-    .index("by_user_room", ["userId", "roomId"])
-    .index("by_timestamp", ["timestamp"])
-    .index("by_typing", ["isTyping"]),
   notifications: notifications
     .index("by_user", ["userId"])
     .index("by_sender", ["senderId"])

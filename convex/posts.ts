@@ -477,13 +477,18 @@ export const getLikedPosts = authenticatedQuery({
 });
 
 /**
- * Get popular posts based on likes and engagement
+ * Get popular posts based on advanced engagement scoring with time decay
  */
 export const getPopularPosts = rateLimitedOptionalAuthQuery({
   args: {
     limit: v.optional(v.number()),
     timeframe: v.optional(
-      v.union(v.literal("week"), v.literal("month"), v.literal("all"))
+      v.union(
+        v.literal("day"),
+        v.literal("week"),
+        v.literal("month"),
+        v.literal("all")
+      )
     ),
   },
   handler: async (ctx, args) => {
@@ -492,12 +497,23 @@ export const getPopularPosts = rateLimitedOptionalAuthQuery({
 
     // Calculate time threshold
     const now = Date.now();
-    const timeThreshold =
-      timeframe === "week"
-        ? now - 7 * 24 * 60 * 60 * 1000
-        : timeframe === "month"
-          ? now - 30 * 24 * 60 * 60 * 1000
-          : 0;
+    let timeThreshold = 0;
+
+    switch (timeframe) {
+      case "day":
+        timeThreshold = now - 24 * 60 * 60 * 1000;
+        break;
+      case "week":
+        timeThreshold = now - 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "month":
+        timeThreshold = now - 30 * 24 * 60 * 60 * 1000;
+        break;
+      case "all":
+      default:
+        timeThreshold = 0;
+        break;
+    }
 
     // Get all active posts within timeframe
     let postsQuery = ctx.db
@@ -512,32 +528,77 @@ export const getPopularPosts = rateLimitedOptionalAuthQuery({
 
     const posts = await postsQuery.collect();
 
-    // Sort by engagement (likes count + comments count + replies count)
+    // Advanced engagement scoring with multiple factors
     const postsWithEngagement = await Promise.all(
       posts.map(async (post: any) => {
-        const likesCount = await ctx.db
+        // Get engagement metrics
+        const likes = await ctx.db
           .query("postLikes")
           .withIndex("by_post", (q: any) => q.eq("postId", post._id))
-          .collect()
-          .then((likes) => likes.length);
+          .collect();
 
-        const commentsCount = await ctx.db
+        const comments = await ctx.db
           .query("comments")
           .withIndex("by_post", (q: any) => q.eq("postId", post._id))
-          .collect()
-          .then((comments) => comments.length);
+          .collect();
 
-        const repliesCount = await ctx.db
+        const replies = await ctx.db
           .query("replies")
           .withIndex("by_post", (q: any) => q.eq("postId", post._id))
-          .collect()
-          .then((replies) => replies.length);
+          .collect();
 
-        const engagementScore = likesCount + commentsCount * 2 + repliesCount;
+        // Count unique users interacting with the post
+        const uniqueUsers = new Set();
+        likes.forEach((like: any) => uniqueUsers.add(like.userId));
+        comments.forEach((comment: any) => uniqueUsers.add(comment.authorId));
+        replies.forEach((reply: any) => uniqueUsers.add(reply.authorId));
+
+        // Calculate time decay factor (newer posts get slight boost)
+        const postAge = now - post._creationTime;
+        const maxAge =
+          timeframe === "day"
+            ? 24 * 60 * 60 * 1000
+            : timeframe === "week"
+              ? 7 * 24 * 60 * 60 * 1000
+              : 30 * 24 * 60 * 60 * 1000;
+        const timeFactor =
+          timeframe === "all" ? 1 : Math.max(0.1, 1 - postAge / maxAge);
+
+        // Advanced scoring algorithm
+        const likesScore = likes.length * 1;
+        const commentsScore = comments.length * 3; // Comments are more valuable
+        const repliesScore = replies.length * 2;
+        const uniqueUsersScore = uniqueUsers.size * 2; // User diversity bonus
+        const lengthScore = Math.min(post.content?.length || 0, 1000) / 100; // Content quality indicator
+
+        // Velocity score (engagement rate over time)
+        const hoursOld = Math.max(1, postAge / (60 * 60 * 1000));
+        const velocityScore =
+          (likes.length + comments.length + replies.length) / hoursOld;
+
+        // Recency boost for very new posts (first 6 hours)
+        const recencyBoost = postAge < 6 * 60 * 60 * 1000 ? 1.5 : 1;
+
+        const baseScore =
+          likesScore +
+          commentsScore +
+          repliesScore +
+          uniqueUsersScore +
+          lengthScore +
+          velocityScore * 5;
+        const finalScore = baseScore * timeFactor * recencyBoost;
 
         return {
           post,
-          engagementScore,
+          engagementScore: finalScore,
+          metrics: {
+            likes: likes.length,
+            comments: comments.length,
+            replies: replies.length,
+            uniqueUsers: uniqueUsers.size,
+            velocity: velocityScore.toFixed(2),
+            timeFactor: timeFactor.toFixed(2),
+          },
         };
       })
     );
@@ -597,96 +658,416 @@ export const getPopularPosts = rateLimitedOptionalAuthQuery({
 });
 
 /**
- * Get trending topics from recent posts
+ * Get trending posts (rapidly gaining engagement) with velocity-based ranking
+ */
+export const getTrendingPosts = rateLimitedOptionalAuthQuery({
+  args: {
+    limit: v.optional(v.number()),
+    timeframe: v.optional(v.union(v.literal("day"), v.literal("week"))),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 5;
+    const timeframe = args.timeframe || "day";
+
+    const now = Date.now();
+    const timeThreshold =
+      timeframe === "day"
+        ? now - 24 * 60 * 60 * 1000
+        : now - 7 * 24 * 60 * 60 * 1000;
+
+    // Get recent posts
+    const recentPosts = await ctx.db
+      .query("posts")
+      .withIndex("by_status", (q: any) => q.eq("status", "active"))
+      .filter((q: any) => q.gte(q.field("_creationTime"), timeThreshold))
+      .collect();
+
+    // Calculate trending scores based on velocity
+    const postsWithTrendingScore = await Promise.all(
+      recentPosts.map(async (post: any) => {
+        const postAge = now - post._creationTime;
+        const hoursOld = Math.max(0.5, postAge / (60 * 60 * 1000));
+
+        // Get recent engagement (last few hours)
+        const recentEngagementTime = now - 6 * 60 * 60 * 1000; // Last 6 hours
+
+        const likes = await ctx.db
+          .query("postLikes")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect();
+
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect();
+
+        const replies = await ctx.db
+          .query("replies")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect();
+
+        // Calculate recent engagement vs total engagement
+        const recentLikes = likes.filter(
+          (like) => like._creationTime > recentEngagementTime
+        );
+        const recentComments = comments.filter(
+          (comment) => comment._creationTime > recentEngagementTime
+        );
+        const recentReplies = replies.filter(
+          (reply) => reply._creationTime > recentEngagementTime
+        );
+
+        const totalEngagement =
+          likes.length + comments.length * 2 + replies.length;
+        const recentEngagement =
+          recentLikes.length + recentComments.length * 2 + recentReplies.length;
+
+        // Velocity score: recent engagement rate
+        const velocityScore = recentEngagement / Math.max(1, hoursOld / 6); // Per 6-hour period
+
+        // Acceleration factor: increasing engagement rate
+        const accelerationFactor =
+          totalEngagement > 0 ? (recentEngagement / totalEngagement) * 10 : 0;
+
+        // Trending score combines velocity and acceleration
+        const trendingScore = velocityScore + accelerationFactor;
+
+        return {
+          post,
+          trendingScore,
+          metrics: {
+            totalEngagement,
+            recentEngagement,
+            velocity: velocityScore.toFixed(2),
+            acceleration: accelerationFactor.toFixed(2),
+          },
+        };
+      })
+    );
+
+    // Filter posts with meaningful trending scores and sort
+    const trendingPosts = postsWithTrendingScore
+      .filter((item) => item.trendingScore > 0.5) // Minimum threshold for trending
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, limit)
+      .map((item) => item.post);
+
+    // Enrich with user data
+    const enrichedPosts = await Promise.all(
+      trendingPosts.map(async (post: any) => {
+        let author = null;
+        if (!post.isAnonymous && post.authorId) {
+          const authorDoc = await ctx.db.get(post.authorId);
+          if (authorDoc && "userName" in authorDoc) {
+            author = {
+              _id: authorDoc._id,
+              userName: authorDoc.userName,
+              imageUrl: authorDoc.imageUrl,
+            };
+          }
+        }
+
+        let hasLiked = false;
+        if (ctx.user) {
+          const like = await ctx.db
+            .query("postLikes")
+            .withIndex("by_user_post", (q: any) =>
+              q.eq("userId", ctx.user!._id).eq("postId", post._id)
+            )
+            .first();
+          hasLiked = !!like;
+        }
+
+        const likesCount = await ctx.db
+          .query("postLikes")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect()
+          .then((likes) => likes.length);
+
+        return {
+          ...post,
+          author,
+          hasLiked,
+          likesCount,
+        };
+      })
+    );
+
+    return enrichedPosts;
+  },
+});
+
+/**
+ * Get trending topics using advanced content analysis and engagement weighting
  */
 export const getTrendingTopics = query({
   args: {
     limit: v.optional(v.number()),
+    timeframe: v.optional(
+      v.union(v.literal("day"), v.literal("week"), v.literal("month"))
+    ),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 6;
+    const timeframe = args.timeframe || "week";
 
-    // Get recent posts from the last week
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    // Calculate time threshold
+    const now = Date.now();
+    let timeThreshold = 0;
 
+    switch (timeframe) {
+      case "day":
+        timeThreshold = now - 24 * 60 * 60 * 1000;
+        break;
+      case "week":
+        timeThreshold = now - 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "month":
+        timeThreshold = now - 30 * 24 * 60 * 60 * 1000;
+        break;
+    }
+
+    // Get recent posts within timeframe
     const recentPosts = await ctx.db
       .query("posts")
       .withIndex("by_status", (q: any) => q.eq("status", "active"))
-      .filter((q: any) => q.gte(q.field("_creationTime"), weekAgo))
+      .filter((q: any) => q.gte(q.field("_creationTime"), timeThreshold))
       .collect();
 
-    // Extract and count topics from post content
-    const topicCounts = new Map<string, number>();
+    // Advanced topic extraction with weighted scoring
+    const topicScores = new Map<
+      string,
+      { count: number; engagementScore: number }
+    >();
 
-    // Common trending topics (you can enhance this with AI/ML later)
-    const commonTopics = [
-      "love",
-      "work",
-      "family",
-      "friends",
-      "relationship",
-      "career",
-      "school",
-      "college",
-      "university",
-      "dating",
-      "marriage",
-      "divorce",
-      "money",
-      "health",
-      "mental health",
-      "anxiety",
-      "depression",
-      "stress",
-      "happiness",
-      "dreams",
-      "goals",
-      "future",
-      "past",
-      "regret",
-      "mistake",
-      "secret",
-      "confession",
-      "truth",
-      "lie",
-      "betrayal",
-      "trust",
-      "friendship",
-      "pregnancy",
-      "children",
-      "parents",
-      "siblings",
-      "boss",
-      "job",
-      "interview",
-      "promotion",
-      "travel",
-      "vacation",
-      "home",
-      "moving",
-    ];
+    // Enhanced topic categories with synonyms and variations
+    const topicCategories = {
+      "Love & Romance": [
+        "love",
+        "romance",
+        "dating",
+        "relationship",
+        "boyfriend",
+        "girlfriend",
+        "partner",
+        "soulmate",
+        "crush",
+        "attraction",
+      ],
+      "Work & Career": [
+        "work",
+        "job",
+        "career",
+        "boss",
+        "colleague",
+        "office",
+        "business",
+        "promotion",
+        "interview",
+        "workplace",
+        "professional",
+      ],
+      "Family & Home": [
+        "family",
+        "parents",
+        "mother",
+        "father",
+        "siblings",
+        "home",
+        "house",
+        "children",
+        "kids",
+        "baby",
+        "pregnancy",
+      ],
+      "Mental Health": [
+        "anxiety",
+        "depression",
+        "stress",
+        "mental health",
+        "therapy",
+        "counseling",
+        "panic",
+        "overwhelmed",
+        "emotional",
+        "feelings",
+      ],
+      Education: [
+        "school",
+        "college",
+        "university",
+        "student",
+        "teacher",
+        "education",
+        "learning",
+        "study",
+        "exam",
+        "graduation",
+      ],
+      Friendship: [
+        "friends",
+        "friendship",
+        "bestfriend",
+        "social",
+        "party",
+        "hangout",
+        "buddy",
+        "companion",
+      ],
+      "Health & Wellness": [
+        "health",
+        "fitness",
+        "diet",
+        "exercise",
+        "medical",
+        "doctor",
+        "hospital",
+        "sick",
+        "wellness",
+        "body",
+      ],
+      "Money & Finance": [
+        "money",
+        "financial",
+        "debt",
+        "salary",
+        "income",
+        "expensive",
+        "broke",
+        "rich",
+        "poor",
+        "budget",
+      ],
+      "Life Changes": [
+        "moving",
+        "change",
+        "future",
+        "past",
+        "goals",
+        "dreams",
+        "plans",
+        "decision",
+        "choice",
+        "opportunity",
+      ],
+      "Secrets & Confessions": [
+        "secret",
+        "confession",
+        "truth",
+        "lie",
+        "hidden",
+        "reveal",
+        "admit",
+        "guilty",
+        "shame",
+        "regret",
+      ],
+    };
 
-    // Count topic mentions in recent posts
-    recentPosts.forEach((post) => {
+    // Calculate engagement scores for posts
+    const postsWithEngagement = await Promise.all(
+      recentPosts.map(async (post) => {
+        const likes = await ctx.db
+          .query("postLikes")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect();
+
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect();
+
+        const replies = await ctx.db
+          .query("replies")
+          .withIndex("by_post", (q: any) => q.eq("postId", post._id))
+          .collect();
+
+        // Calculate post engagement score
+        const engagementScore =
+          likes.length + comments.length * 2 + replies.length;
+        const timeDecay = Math.max(
+          0.1,
+          1 - (now - post._creationTime) / timeThreshold
+        );
+        const weightedScore = engagementScore * timeDecay;
+
+        return {
+          post,
+          engagementScore: weightedScore,
+        };
+      })
+    );
+
+    // Analyze content for trending topics
+    postsWithEngagement.forEach(({ post, engagementScore }) => {
       const content = post.content?.toLowerCase() || "";
-      commonTopics.forEach((topic) => {
-        if (content.includes(topic)) {
-          topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+
+      // Check each topic category
+      Object.entries(topicCategories).forEach(([category, keywords]) => {
+        const keywordMatches = keywords.filter((keyword) =>
+          content.includes(keyword.toLowerCase())
+        );
+
+        if (keywordMatches.length > 0) {
+          // Use the most specific/longest matching keyword
+          const bestMatch = keywordMatches.reduce((a, b) =>
+            a.length > b.length ? a : b
+          );
+          const topicKey = category.toLowerCase();
+
+          const current = topicScores.get(topicKey) || {
+            count: 0,
+            engagementScore: 0,
+          };
+          topicScores.set(topicKey, {
+            count: current.count + 1,
+            engagementScore: current.engagementScore + engagementScore,
+          });
+        }
+      });
+
+      // Extract hashtags if any
+      const hashtags = content.match(/#\w+/g) || [];
+      hashtags.forEach((tag) => {
+        const cleanTag = tag.substring(1); // Remove #
+        if (cleanTag.length > 2) {
+          const current = topicScores.get(cleanTag) || {
+            count: 0,
+            engagementScore: 0,
+          };
+          topicScores.set(cleanTag, {
+            count: current.count + 1,
+            engagementScore: current.engagementScore + engagementScore,
+          });
         }
       });
     });
 
-    // Sort by count and return top topics
-    const trendingTopics = Array.from(topicCounts.entries())
-      .sort((a, b) => b[1] - a[1])
+    // Calculate final trending scores (combine frequency and engagement)
+    const trendingTopics = Array.from(topicScores.entries())
+      .map(([topic, data]) => ({
+        topic,
+        score: data.count * 0.4 + data.engagementScore * 0.6, // Weight engagement higher
+        count: data.count,
+        engagement: data.engagementScore,
+      }))
+      .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(([topic]) => topic);
+      .map((item) => item.topic);
 
-    // If no trending topics found, return default ones
-    if (trendingTopics.length === 0) {
-      return ["love", "work", "family", "secrets", "dreams", "regrets"];
-    }
+    // Fallback trending topics if none detected
+    const fallbackTopics = [
+      "love & romance",
+      "work & career",
+      "family & home",
+      "mental health",
+      "friendship",
+      "secrets & confessions",
+    ];
 
-    return trendingTopics;
+    // Return trending topics or fallback
+    return trendingTopics.length > 0
+      ? trendingTopics
+      : fallbackTopics.slice(0, limit);
   },
 });

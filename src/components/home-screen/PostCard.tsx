@@ -18,6 +18,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SvgXml } from "react-native-svg";
 import { StyleSheet } from "react-native-unistyles";
+import OnlineStatusIndicator from "../ui/OnlineStatusIndicator";
 import { ReportModal } from "../ui/ReportModal";
 
 type PostCardProps = {
@@ -263,7 +264,16 @@ const PostCard = ({
 
         {/* User Info */}
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{post.author?.userName}</Text>
+          <View style={styles.userNameContainer}>
+            <Text style={styles.userName}>{post.author?.userName}</Text>
+            {post.author?._id && (
+              <OnlineStatusIndicator
+                userId={post.author._id as any}
+                size="small"
+                style={styles.onlineStatus}
+              />
+            )}
+          </View>
           <Text style={styles.timestamp}>
             {formatDistanceToNowStrict(post._creationTime)}
             {post.editedAt && " • edited"}
@@ -683,10 +693,17 @@ const styles = StyleSheet.create((theme) => ({
   userInfo: {
     flex: 1,
   },
+  userNameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   userName: {
     fontSize: 14,
     fontWeight: "600",
     color: theme.colors.onSurface,
+  },
+  onlineStatus: {
+    marginLeft: 6,
   },
   timestamp: {
     fontSize: 12,

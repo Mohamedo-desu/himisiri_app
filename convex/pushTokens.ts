@@ -5,38 +5,18 @@ import { getAuthenticatedUser } from "./users";
 export const registerPushToken = mutation({
   args: {
     pushToken: v.string(),
-    deviceId: v.string(),
-    platform: v.string(),
-    deviceName: v.string(),
-    deviceType: v.string(),
-    modelName: v.string(),
-    brand: v.string(),
-    manufacturer: v.string(),
-    osName: v.string(),
-    osVersion: v.string(),
+    deviceId: v.string(), // Only deviceId for consistency
     timestamp: v.string(),
   },
   handler: async (ctx, args) => {
-    const {
-      pushToken,
-      deviceId,
-      platform,
-      deviceName,
-      deviceType,
-      modelName,
-      brand,
-      manufacturer,
-      osName,
-      osVersion,
-      timestamp,
-    } = args;
+    const { pushToken, deviceId, timestamp } = args;
     const authenticatedUser = await getAuthenticatedUser(ctx);
 
     // Validate required fields
-    if (!pushToken || !deviceId || !platform) {
+    if (!pushToken || !deviceId) {
       return {
         success: false,
-        message: "Missing required fields: pushToken, deviceId, or platform",
+        message: "Missing required fields: pushToken or deviceId",
       };
     }
 
@@ -54,14 +34,7 @@ export const registerPushToken = mutation({
       await ctx.db.patch(existingToken._id, {
         userId: authenticatedUser?._id,
         pushToken,
-        platform,
-        deviceName,
-        deviceType,
-        modelName,
-        brand,
-        manufacturer,
-        osName,
-        osVersion,
+        deviceId,
         timestamp,
       });
       pushTokenEntry = existingToken._id;
@@ -72,14 +45,6 @@ export const registerPushToken = mutation({
         userId: authenticatedUser?._id,
         pushToken,
         deviceId,
-        platform,
-        deviceName,
-        deviceType,
-        modelName,
-        brand,
-        manufacturer,
-        osName,
-        osVersion,
         timestamp,
       });
       message = "Push token registered successfully";

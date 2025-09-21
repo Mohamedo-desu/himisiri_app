@@ -2,7 +2,6 @@ import { api } from "@/convex/_generated/api";
 import { convex } from "@/providers/ClerkAndConvexProvider";
 import { saveToLocalStorage } from "@/store/storage";
 import { PushTokenManager } from "@/utils/pushTokenManager";
-import { Platform } from "react-native";
 
 interface RegisterTokenResponse {
   success: boolean;
@@ -21,23 +20,12 @@ export class PushTokenService {
     pushToken: string
   ): Promise<RegisterTokenResponse> {
     try {
-      // Initialize device tracking to ensure consistent device ID and info
-      const { deviceId, deviceInfo } =
-        await PushTokenManager.initializeDeviceTracking();
+      // Get consistent device ID
+      const deviceId = await PushTokenManager.getCurrentDeviceId();
 
       const data = await convex.mutation(api.pushTokens.registerPushToken, {
         pushToken,
-        deviceId,
-        platform: Platform.OS,
-        deviceName: deviceInfo.deviceName ? String(deviceInfo.deviceName) : "",
-        deviceType: deviceInfo.deviceType ? String(deviceInfo.deviceType) : "",
-        modelName: deviceInfo.modelName ? String(deviceInfo.modelName) : "",
-        brand: deviceInfo.brand ? String(deviceInfo.brand) : "",
-        manufacturer: deviceInfo.manufacturer
-          ? String(deviceInfo.manufacturer)
-          : "",
-        osName: deviceInfo.osName ? String(deviceInfo.osName) : "",
-        osVersion: deviceInfo.osVersion ? String(deviceInfo.osVersion) : "",
+        deviceId: deviceId || `device_${Date.now()}`,
         timestamp: new Date().toLocaleString(),
       });
 

@@ -21,6 +21,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import { SvgXml } from "react-native-svg";
 import { StyleSheet } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
+import OnlineStatusIndicator from "../ui/OnlineStatusIndicator";
 import { ReportModal } from "../ui/ReportModal";
 
 type CommentCardProps = {
@@ -269,7 +270,16 @@ const CommentCard = ({
 
         {/* User Info */}
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{displayAuthor}</Text>
+          <View style={styles.userNameContainer}>
+            <Text style={styles.userName}>{displayAuthor}</Text>
+            {!comment.isAnonymous && comment.author?._id && (
+              <OnlineStatusIndicator
+                userId={comment.author._id as any}
+                size="small"
+                style={styles.onlineStatus}
+              />
+            )}
+          </View>
           <Text style={styles.timestamp}>
             {formatDistanceToNowStrict(comment._creationTime)}
             {comment.editedAt && " • edited"}
@@ -580,10 +590,17 @@ const styles = StyleSheet.create((theme) => ({
   userInfo: {
     flex: 1,
   },
+  userNameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   userName: {
     fontSize: 14,
     fontWeight: "600",
     color: theme.colors.onSurface,
+  },
+  onlineStatus: {
+    marginLeft: 6,
   },
   timestamp: {
     fontSize: 12,

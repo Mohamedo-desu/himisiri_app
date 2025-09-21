@@ -1,6 +1,7 @@
 import InitialLayout from "@/components/InitialLayout";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import ClerkAndConvexProvider from "@/providers/ClerkAndConvexProvider";
+import UserPresenceProvider from "@/providers/UserPresenceProvider";
 import { handleExpoUpdateMetadata } from "@/utils/expoUpdateMetadata";
 import * as Sentry from "@sentry/react-native";
 import { isRunningInExpoGo } from "expo";
@@ -60,9 +61,11 @@ function RootLayout() {
   return (
     <>
       <ClerkAndConvexProvider>
-        <GestureHandlerRootView style={styles.container}>
-          <InitialLayout />
-        </GestureHandlerRootView>
+        <UserPresenceProvider>
+          <GestureHandlerRootView style={styles.container}>
+            <InitialLayout />
+          </GestureHandlerRootView>
+        </UserPresenceProvider>
       </ClerkAndConvexProvider>
       <SystemBars
         style={theme.colors.background === "#121212" ? "light" : "dark"}

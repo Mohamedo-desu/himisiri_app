@@ -22,15 +22,24 @@ const ExploreScreen = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("week");
 
-  // Fetch popular posts
+  // Fetch popular posts with enhanced parameters
   const popularPosts = useQuery(api.posts.getPopularPosts, {
     limit: 10,
+    timeframe: timeframe,
   });
 
-  // Fetch trending topics (we'll get this from posts with most engagement)
+  // Fetch trending topics with enhanced parameters
   const trendingTopics = useQuery(api.posts.getTrendingTopics, {
     limit: 6,
+    timeframe: timeframe,
+  });
+
+  // Fetch trending posts (rapidly gaining engagement)
+  const trendingPosts = useQuery(api.posts.getTrendingPosts, {
+    limit: 3,
+    timeframe: timeframe === "month" ? "week" : timeframe, // Trending posts work better with shorter timeframes
   });
 
   // Search functionality
@@ -123,6 +132,44 @@ const ExploreScreen = () => {
           </Text>
         </View>
 
+        {/* Timeframe Selector */}
+        <View style={styles.timeframeContainer}>
+          {(["day", "week", "month"] as const).map((period) => (
+            <TouchableOpacity
+              key={period}
+              style={[
+                styles.timeframeButton,
+                {
+                  backgroundColor:
+                    timeframe === period
+                      ? theme.colors.primary
+                      : theme.colors.background,
+                  borderColor: theme.colors.primary,
+                },
+              ]}
+              onPress={() => setTimeframe(period)}
+            >
+              <Text
+                style={[
+                  styles.timeframeText,
+                  {
+                    color:
+                      timeframe === period
+                        ? theme.colors.onPrimary
+                        : theme.colors.primary,
+                  },
+                ]}
+              >
+                {period === "day"
+                  ? "Today"
+                  : period === "week"
+                    ? "This Week"
+                    : "This Month"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -171,6 +218,72 @@ const ExploreScreen = () => {
               )}
         </ScrollView>
       </View>
+
+      {/* Trending Posts */}
+      {trendingPosts && trendingPosts.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <IconsSolid.BoltIcon size={20} color="#FF9500" />
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: theme.colors.onBackground },
+              ]}
+            >
+              🚀 Trending Posts
+            </Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.trendingPostsContainer}
+          >
+            {trendingPosts.map((post: any, index: number) => (
+              <TouchableOpacity
+                key={post._id}
+                style={[
+                  styles.trendingPostCard,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+                onPress={() => router.push(`/post/${post._id}`)}
+              >
+                <Text
+                  style={[
+                    styles.trendingPostContent,
+                    { color: theme.colors.onSurface },
+                  ]}
+                  numberOfLines={3}
+                >
+                  {post.content}
+                </Text>
+                <View style={styles.trendingPostMeta}>
+                  <View style={styles.trendingPostStats}>
+                    <IconsSolid.HeartIcon size={12} color="#FF6B6B" />
+                    <Text
+                      style={[
+                        styles.trendingPostStat,
+                        { color: theme.colors.grey500 },
+                      ]}
+                    >
+                      {post.likesCount || 0}
+                    </Text>
+                    <IconsSolid.ChatBubbleLeftIcon size={12} color="#4ECDC4" />
+                    <Text
+                      style={[
+                        styles.trendingPostStat,
+                        { color: theme.colors.grey500 },
+                      ]}
+                    >
+                      Hot
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Categories */}
       <View style={styles.section}>
@@ -244,7 +357,12 @@ const ExploreScreen = () => {
         <Text
           style={[styles.sectionTitle, { color: theme.colors.onBackground }]}
         >
-          Popular This Week
+          Popular{" "}
+          {timeframe === "day"
+            ? "Today"
+            : timeframe === "week"
+              ? "This Week"
+              : "This Month"}
         </Text>
       </View>
     </View>
@@ -420,5 +538,55 @@ const styles = StyleSheet.create((theme) => ({
   loadingText: {
     marginTop: 16,
     fontSize: 14,
+  },
+  timeframeContainer: {
+    flexDirection: "row",
+    marginVertical: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    padding: 4,
+  },
+  timeframeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: "center",
+    marginHorizontal: 2,
+  },
+  timeframeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  trendingPostsContainer: {
+    marginTop: 12,
+  },
+  trendingPostCard: {
+    width: 200,
+    padding: 12,
+    borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+  },
+  trendingPostContent: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  trendingPostMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  trendingPostStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  trendingPostStat: {
+    fontSize: 11,
+    fontWeight: "500",
   },
 }));
