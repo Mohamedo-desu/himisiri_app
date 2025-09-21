@@ -16,6 +16,7 @@ import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
+import Toast from "react-native-toast-message";
 import { useUnistyles } from "react-native-unistyles";
 import { EditProfileModal } from "../../../components/ui/EditProfileModal";
 import { FollowersModal } from "../../../components/ui/FollowersModal";
@@ -64,10 +65,17 @@ const ProfileScreen = () => {
           onPress: async () => {
             try {
               await unblockUser({ userId: userId as any });
-              Alert.alert("Success", `${userName} has been unblocked`);
+              Toast.show({
+                type: "success",
+                text1: "User Unblocked",
+                text2: `${userName} has been unblocked successfully`,
+              });
             } catch (error) {
-              Alert.alert("Error", "Failed to unblock user. Please try again.");
-              console.error("Unblock user error:", error);
+              Toast.show({
+                type: "error",
+                text1: "Failed to Unblock",
+                text2: "Please try again later",
+              });
             }
           },
         },
@@ -557,13 +565,7 @@ const ProfileScreen = () => {
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={true}
             >
-              {/* Debug text */}
-              <Text style={{ padding: 20, color: theme.colors.onBackground }}>
-                Debug: Modal content loaded. Blocked users count:{" "}
-                {blockedUsers?.length || 0}
-              </Text>
-
-              {/* Simple blocked users list for testing */}
+              {/* Blocked users list */}
               {blockedUsers && blockedUsers.length > 0 ? (
                 blockedUsers.map((user) => (
                   <View

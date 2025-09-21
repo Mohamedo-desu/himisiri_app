@@ -1,4 +1,5 @@
 import InitialLayout from "@/components/InitialLayout";
+import ToastConfig from "@/config/toast/ToastConfig";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import ClerkAndConvexProvider from "@/providers/ClerkAndConvexProvider";
 import UserPresenceProvider from "@/providers/UserPresenceProvider";
@@ -11,7 +12,9 @@ import { useEffect } from "react";
 import { LogBox } from "react-native";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { enableFreeze } from "react-native-screens";
+import Toast from "react-native-toast-message";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { sentryConfig } from "sentry.config";
 
@@ -44,6 +47,8 @@ Notifications.setNotificationHandler({
 });
 
 function RootLayout() {
+  const { top } = useSafeAreaInsets();
+
   const navigationRef = useNavigationContainerRef();
 
   // Set up push notification registration (permissions, token, listeners, etc.)
@@ -69,6 +74,12 @@ function RootLayout() {
       </ClerkAndConvexProvider>
       <SystemBars
         style={theme.colors.background === "#121212" ? "light" : "dark"}
+      />
+      <Toast
+        config={ToastConfig}
+        position="top"
+        topOffset={top}
+        avoidKeyboard={true}
       />
     </>
   );

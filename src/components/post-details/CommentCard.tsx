@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import * as IconsOutline from "react-native-heroicons/outline";
 import { SvgXml } from "react-native-svg";
+import Toast from "react-native-toast-message";
 import { StyleSheet } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
 import OnlineStatusIndicator from "../ui/OnlineStatusIndicator";
@@ -65,10 +66,11 @@ const CommentCard = ({
 
   const handleLike = async () => {
     if (!currentUser) {
-      Alert.alert(
-        "Authentication Required",
-        "Please sign in to like comments."
-      );
+      Toast.show({
+        type: "warning",
+        text1: "Sign In Required",
+        text2: "Please sign in to like comments",
+      });
       return;
     }
 
@@ -78,8 +80,11 @@ const CommentCard = ({
       setLiking(true);
       await toggleCommentLike({ commentId: comment._id });
     } catch (error) {
-      console.error("Error liking comment:", error);
-      Alert.alert("Error", "Failed to like comment. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Failed to Like",
+        text2: "Please try again later",
+      });
     } finally {
       setLiking(false);
     }
@@ -93,10 +98,11 @@ const CommentCard = ({
   const handleSaveEdit = async () => {
     try {
       if (editContent.length < 1 || editContent.length > 2000) {
-        Alert.alert(
-          "Error",
-          "Comment content must be between 1 and 2000 characters"
-        );
+        Toast.show({
+          type: "warning",
+          text1: "Invalid Content",
+          text2: "Comment must be between 1 and 2000 characters",
+        });
         return;
       }
 
@@ -106,9 +112,17 @@ const CommentCard = ({
       });
 
       setShowEditModal(false);
-      Alert.alert("Success", "Comment updated successfully!");
+      Toast.show({
+        type: "success",
+        text1: "Comment Updated",
+        text2: "Your comment has been updated successfully",
+      });
     } catch (error) {
-      Alert.alert("Error", "Failed to update comment. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Update Failed",
+        text2: "Please try again later",
+      });
     }
   };
 
@@ -125,12 +139,17 @@ const CommentCard = ({
           onPress: async () => {
             try {
               await deleteComment({ commentId: comment._id });
-              Alert.alert("Success", "Comment deleted successfully!");
+              Toast.show({
+                type: "success",
+                text1: "Comment Deleted",
+                text2: "Your comment has been deleted successfully",
+              });
             } catch (error) {
-              Alert.alert(
-                "Error",
-                "Failed to delete comment. Please try again."
-              );
+              Toast.show({
+                type: "error",
+                text1: "Delete Failed",
+                text2: "Please try again later",
+              });
             }
           },
         },
@@ -140,10 +159,11 @@ const CommentCard = ({
 
   const handleViewStats = () => {
     setShowMenu(false);
-    Alert.alert(
-      "Comment Statistics",
-      `Likes: ${comment.likesCount || 0}\nCreated: ${new Date(comment._creationTime).toLocaleDateString()}${comment.editedAt ? `\nLast edited: ${new Date(comment.editedAt).toLocaleDateString()}` : ""}`
-    );
+    Toast.show({
+      type: "info",
+      text1: "Comment Statistics",
+      text2: `${comment.likesCount || 0} likes • Created ${new Date(comment._creationTime).toLocaleDateString()}`,
+    });
   };
 
   const handleShareComment = () => {
@@ -168,7 +188,11 @@ const CommentCard = ({
           });
         } else {
           await navigator.clipboard.writeText(shareContent.message);
-          Alert.alert("Copied!", "Comment copied to clipboard.");
+          Toast.show({
+            type: "success",
+            text1: "Copied to Clipboard",
+            text2: "Comment has been copied successfully",
+          });
         }
       } else {
         await Share.share({
@@ -177,7 +201,11 @@ const CommentCard = ({
         });
       }
     } catch (error) {
-      console.error("Error sharing comment:", error);
+      Toast.show({
+        type: "error",
+        text1: "Share Failed",
+        text2: "Unable to share comment at the moment",
+      });
     }
   };
 
@@ -499,17 +527,18 @@ const CommentCard = ({
                                 await blockUser({
                                   userId: comment.author!._id as Id<"users">,
                                 });
-                                Alert.alert(
-                                  "Success",
-                                  `${comment.author!.userName} has been blocked`
-                                );
+                                Toast.show({
+                                  type: "success",
+                                  text1: "User Blocked",
+                                  text2: `${comment.author!.userName} has been blocked successfully`,
+                                });
                                 setShowMenu(false);
                               } catch (error) {
-                                Alert.alert(
-                                  "Error",
-                                  "Failed to block user. Please try again."
-                                );
-                                console.error("Block user error:", error);
+                                Toast.show({
+                                  type: "error",
+                                  text1: "Failed to Block User",
+                                  text2: "Please try again later",
+                                });
                               }
                             },
                           },

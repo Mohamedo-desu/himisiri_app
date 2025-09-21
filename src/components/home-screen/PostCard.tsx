@@ -17,6 +17,7 @@ import {
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SvgXml } from "react-native-svg";
+import Toast from "react-native-toast-message";
 import { StyleSheet } from "react-native-unistyles";
 import { BlockUserButton } from "../ui/BlockUserComponents";
 import OnlineStatusIndicator from "../ui/OnlineStatusIndicator";
@@ -61,7 +62,11 @@ const PostCard = ({
     try {
       await togglePostLike({ postId: post._id });
     } catch (error) {
-      Alert.alert("Error", "Failed to update like. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Failed to Like",
+        text2: "Please try again later",
+      });
     }
   };
 
@@ -73,10 +78,11 @@ const PostCard = ({
   const handleSaveEdit = async () => {
     try {
       if (editContent.length < 10 || editContent.length > 5000) {
-        Alert.alert(
-          "Error",
-          "Post content must be between 10 and 5000 characters"
-        );
+        Toast.show({
+          type: "warning",
+          text1: "Invalid Content",
+          text2: "Post must be between 10 and 5000 characters",
+        });
         return;
       }
 
@@ -88,9 +94,17 @@ const PostCard = ({
       });
 
       setShowEditModal(false);
-      Alert.alert("Success", "Post updated successfully!");
+      Toast.show({
+        type: "success",
+        text1: "Post Updated",
+        text2: "Your post has been updated successfully",
+      });
     } catch (error) {
-      Alert.alert("Error", "Failed to update post. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Update Failed",
+        text2: "Please try again later",
+      });
     }
   };
 
@@ -107,9 +121,17 @@ const PostCard = ({
           onPress: async () => {
             try {
               await deletePost({ postId: post._id });
-              Alert.alert("Success", "Post deleted successfully!");
+              Toast.show({
+                type: "success",
+                text1: "Post Deleted",
+                text2: "Your post has been deleted successfully",
+              });
             } catch (error) {
-              Alert.alert("Error", "Failed to delete post. Please try again.");
+              Toast.show({
+                type: "error",
+                text1: "Delete Failed",
+                text2: "Please try again later",
+              });
             }
           },
         },
@@ -130,9 +152,17 @@ const PostCard = ({
               postId: post._id,
               visibility: "private",
             });
-            Alert.alert("Success", "Post hidden from public feed!");
+            Toast.show({
+              type: "success",
+              text1: "Post Hidden",
+              text2: "Your post has been hidden from public feed",
+            });
           } catch (error) {
-            Alert.alert("Error", "Failed to hide post. Please try again.");
+            Toast.show({
+              type: "error",
+              text1: "Hide Failed",
+              text2: "Please try again later",
+            });
           }
         },
       },
@@ -141,16 +171,20 @@ const PostCard = ({
 
   const handleSharePost = () => {
     setShowMenu(false);
-    // TODO: Implement share functionality
-    Alert.alert("Share", "Share functionality coming soon!");
+    Toast.show({
+      type: "info",
+      text1: "Share Feature",
+      text2: "Coming soon! We're working on sharing functionality",
+    });
   };
 
   const handleViewStats = () => {
     setShowMenu(false);
-    Alert.alert(
-      "Post Statistics",
-      `Likes: ${post.likesCount || 0}\nComments: ${post.commentsCount || 0}\nViews: Coming soon\nCreated: ${new Date(post._creationTime).toLocaleDateString()}`
-    );
+    Toast.show({
+      type: "info",
+      text1: "Post Statistics",
+      text2: `${post.likesCount || 0} likes • ${post.commentsCount || 0} comments • Created ${new Date(post._creationTime).toLocaleDateString()}`,
+    });
   };
 
   const handleReportPost = () => {

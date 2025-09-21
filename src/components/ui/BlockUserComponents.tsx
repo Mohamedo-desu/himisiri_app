@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { SvgXml } from "react-native-svg";
+import Toast from "react-native-toast-message";
 import { useUnistyles } from "react-native-unistyles";
 
 interface BlockUserButtonProps {
@@ -39,7 +40,11 @@ export const BlockUserButton: React.FC<BlockUserButtonProps> = ({
       if (isBlocked) {
         // Unblock user
         await unblockUser({ userId });
-        Alert.alert("Success", `${userName || "User"} has been unblocked`);
+        Toast.show({
+          type: "success",
+          text1: "User Unblocked",
+          text2: `${userName || "User"} has been unblocked successfully`,
+        });
         onBlockStatusChange?.(false);
       } else {
         // Block user - show confirmation
@@ -57,17 +62,18 @@ export const BlockUserButton: React.FC<BlockUserButtonProps> = ({
               onPress: async () => {
                 try {
                   await blockUser({ userId });
-                  Alert.alert(
-                    "Success",
-                    `${userName || "User"} has been blocked`
-                  );
+                  Toast.show({
+                    type: "success",
+                    text1: "User Blocked",
+                    text2: `${userName || "User"} has been blocked successfully`,
+                  });
                   onBlockStatusChange?.(true);
                 } catch (error) {
-                  Alert.alert(
-                    "Error",
-                    "Failed to block user. Please try again."
-                  );
-                  console.error("Block user error:", error);
+                  Toast.show({
+                    type: "error",
+                    text1: "Failed to Block User",
+                    text2: "Please try again later",
+                  });
                 }
               },
             },
@@ -75,8 +81,11 @@ export const BlockUserButton: React.FC<BlockUserButtonProps> = ({
         );
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to update block status. Please try again.");
-      console.error("Block/unblock error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Action Failed",
+        text2: "Please check your connection and try again",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -128,8 +137,6 @@ export const BlockedUsersList: React.FC<BlockedUsersListProps> = ({
   const blockedUsers = useQuery(api.userBlocking.getBlockedUsers);
   const unblockUser = useMutation(api.userBlocking.unblockUser);
 
-  console.log("BlockedUsersList rendered, blockedUsers:", blockedUsers);
-
   const handleUnblock = async (userId: Id<"users">, userName: string) => {
     Alert.alert(
       "Unblock User",
@@ -144,10 +151,17 @@ export const BlockedUsersList: React.FC<BlockedUsersListProps> = ({
           onPress: async () => {
             try {
               await unblockUser({ userId });
-              Alert.alert("Success", `${userName} has been unblocked`);
+              Toast.show({
+                type: "success",
+                text1: "User Unblocked",
+                text2: `${userName} has been unblocked successfully`,
+              });
             } catch (error) {
-              Alert.alert("Error", "Failed to unblock user. Please try again.");
-              console.error("Unblock user error:", error);
+              Toast.show({
+                type: "error",
+                text1: "Failed to Unblock",
+                text2: "Please try again later",
+              });
             }
           },
         },
