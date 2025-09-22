@@ -4,7 +4,6 @@ import React, { createContext, useContext, useEffect } from "react";
 
 interface UserPresenceContextType {
   isOnline: boolean;
-  sessionId: string | null;
   recordActivity: () => void;
 }
 
@@ -20,12 +19,13 @@ export const UserPresenceProvider: React.FC<UserPresenceProviderProps> = ({
   const { isSignedIn } = useAuth();
   const presenceHook = useUserPresence();
 
+  console.log(
+    `🔍 UserPresenceProvider render - isSignedIn: ${isSignedIn}, presenceHook:`,
+    presenceHook
+  );
+
   // Safely destructure with fallbacks
-  const {
-    isOnline = false,
-    sessionId = null,
-    recordActivity = () => {},
-  } = presenceHook || {};
+  const { isOnline = false, recordActivity = () => {} } = presenceHook || {};
 
   // Auto-record activity on touch events
   useEffect(() => {
@@ -40,7 +40,6 @@ export const UserPresenceProvider: React.FC<UserPresenceProviderProps> = ({
 
   const contextValue: UserPresenceContextType = {
     isOnline: !!isOnline,
-    sessionId,
     recordActivity,
   };
 

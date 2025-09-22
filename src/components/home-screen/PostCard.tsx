@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { POST_TABLE } from "@/convex/schema";
 import { useUserStore } from "@/store/useUserStore";
+import { moderateContent } from "@/utils/moderateContent";
 import { sharePost } from "@/utils/shareUtils";
 import { useMutation } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -206,8 +207,8 @@ const PostCard = ({
 
       const result = await sharePost(
         post._id,
-        post.title,
-        post.content,
+        post.title ? moderateContent(post.title) : undefined,
+        moderateContent(post.content),
         post.author?.userName || "Anonymous"
       );
       console.log("Share result:", result);
@@ -368,7 +369,7 @@ const PostCard = ({
           style={styles.title}
           numberOfLines={showFullContent ? undefined : 2}
         >
-          {post.title}
+          {moderateContent(post.title)}
         </Text>
       )}
 
@@ -377,7 +378,7 @@ const PostCard = ({
         style={styles.content}
         numberOfLines={showFullContent ? undefined : 3}
       >
-        {post.content}
+        {moderateContent(post.content)}
       </Text>
 
       {/* Tags */}

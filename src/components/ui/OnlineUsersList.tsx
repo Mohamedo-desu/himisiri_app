@@ -16,13 +16,27 @@ const OnlineUsersList: React.FC = () => {
         <Text style={[styles.userName, { color: theme.colors.onSurface }]}>
           {item.userName}
         </Text>
-        <Text style={[styles.sessionsText, { color: theme.colors.grey500 }]}>
-          {item.activeSessions} session{item.activeSessions !== 1 ? "s" : ""}
+        <Text style={[styles.lastActiveText, { color: theme.colors.grey500 }]}>
+          {item.lastActiveAt
+            ? `Active ${formatLastActive(item.lastActiveAt)}`
+            : "Recently online"}
         </Text>
       </View>
       <OnlineStatusIndicator userId={item._id} size="medium" showText />
     </View>
   );
+
+  const formatLastActive = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    if (minutes < 1) return "now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -51,7 +65,7 @@ const OnlineUsersList: React.FC = () => {
       fontSize: 14,
       fontWeight: "600",
     },
-    sessionsText: {
+    lastActiveText: {
       fontSize: 12,
       marginTop: 2,
     },

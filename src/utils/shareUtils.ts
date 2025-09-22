@@ -29,8 +29,8 @@ export const sharePost = async (
     authorName,
   });
 
-  const deepLink = `${APP_SCHEME}://main/post/${postId}`;
-  const webLink = `${WEB_BASE_URL}/main/post/${postId}`;
+  const deepLink = `${APP_SCHEME}://(main)/post/${postId}`;
+  const webLink = `${WEB_BASE_URL}/(main)/post/${postId}`;
 
   console.log("Generated links:", { deepLink, webLink });
 
@@ -88,8 +88,8 @@ export const shareComment = async (
   commentContent: string,
   authorName?: string
 ) => {
-  const deepLink = `${APP_SCHEME}://main/post/${postId}?highlight=${commentId}&type=comment`;
-  const webLink = `${WEB_BASE_URL}/main/post/${postId}?highlight=${commentId}&type=comment`;
+  const deepLink = `${APP_SCHEME}://(main)/post/${postId}?highlight=${commentId}&type=comment`;
+  const webLink = `${WEB_BASE_URL}/(main)/post/${postId}?highlight=${commentId}&type=comment`;
 
   const contentPreview =
     commentContent.length > 100
@@ -138,8 +138,8 @@ export const shareUser = async (
   userName: string,
   userBio?: string
 ) => {
-  const deepLink = `${APP_SCHEME}://main/user/${userId}`;
-  const webLink = `${WEB_BASE_URL}/main/user/${userId}`;
+  const deepLink = `${APP_SCHEME}://(main)/user/${userId}`;
+  const webLink = `${WEB_BASE_URL}/(main)/user/${userId}`;
 
   const bioInfo = userBio ? `\n\n"${userBio}"` : "";
 

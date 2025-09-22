@@ -46,24 +46,6 @@ export const pushTokens = defineTable({
   timestamp: v.string(),
 });
 
-export const userSessions = defineTable({
-  userId: v.id("users"),
-  clerkSessionId: v.string(), // Use Clerk's session ID as the primary identifier
-  deviceId: v.string(), // Consistent deviceId across all tables
-  status: v.union(
-    v.literal("logged_in"), // User is logged in and app is active
-    v.literal("app_background"), // User is logged in but app is in background
-    v.literal("logged_out") // User has logged out
-  ),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  expiresAt: v.optional(v.number()),
-})
-  .index("by_user", ["userId"])
-  .index("by_clerk_session", ["clerkSessionId"])
-  .index("by_user_status", ["userId", "status"])
-  .index("by_updated", ["updatedAt"]);
-
 export const appVersions = defineTable({
   version: v.string(),
   type: v.union(v.literal("major"), v.literal("minor"), v.literal("patch")),
@@ -290,7 +272,6 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_deviceId", ["deviceId"])
     .index("by_push_token", ["pushToken"]),
-  userSessions: userSessions,
   appVersions: appVersions
     .index("by_version", ["version"])
     .index("by_type", ["type"]),

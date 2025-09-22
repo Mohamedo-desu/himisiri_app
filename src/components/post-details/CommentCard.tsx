@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useUserStore } from "@/store/useUserStore";
+import { moderateContent } from "@/utils/moderateContent";
 import { shareComment } from "@/utils/shareUtils";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
@@ -184,10 +185,15 @@ const CommentCard = ({
 
       if (postId) {
         // Use deep link share if postId is available
-        await shareComment(postId, comment._id, comment.content, authorName);
+        await shareComment(
+          postId,
+          comment._id,
+          moderateContent(comment.content),
+          authorName
+        );
       } else {
         // Fallback to generic content share if no postId
-        const shareMessage = `Check out this comment by ${authorName} on Himisiri:\n\n"${comment.content}"`;
+        const shareMessage = `Check out this comment by ${authorName} on Himisiri:\n\n"${moderateContent(comment.content)}"`;
         const { shareGenericContent } = await import("@/utils/shareUtils");
         await shareGenericContent(shareMessage, "Comment from Himisiri");
       }
@@ -298,7 +304,7 @@ const CommentCard = ({
           color="onBackground"
           style={styles.commentText}
         >
-          {comment.content}
+          {moderateContent(comment.content)}
         </CustomText>
       </View>
 

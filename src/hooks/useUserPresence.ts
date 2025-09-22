@@ -1,17 +1,15 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { getDeviceId } from "@/utils/deviceId";
-import { useAuth, useSession } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
 
 /**
- * Hook to manage user online presence using Clerk session ID
+ * Simplified hook to manage user online presence using only user fields
  */
 export const useUserPresence = () => {
-  const { isSignedIn, userId } = useAuth();
-  const { session } = useSession();
+  const { isSignedIn } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [appState, setAppState] = useState<AppStateStatus>(
     AppState.currentState
@@ -19,34 +17,34 @@ export const useUserPresence = () => {
   const previousAuthState = useRef<boolean>(false);
   const previousAppState = useRef<AppStateStatus>(AppState.currentState);
 
-  // Mutation
-  const updateSessionStatus = useMutation(api.userPresence.updateSessionStatus);
+  // Simplified mutations - only update user fields
+  const updateUserStatus = useMutation(api.userPresence.updateUserStatus);
+  const recordActivity = useMutation(api.userPresence.recordActivity);
 
   /**
-   * Update session status with consistent deviceId
+   * Update user online status
    */
   const updateStatus = useCallback(
-    async (status: "logged_in" | "app_background" | "logged_out") => {
-      if (!session?.id || !isSignedIn) return;
+    async (status: "online" | "offline") => {
+      console.log(
+        `🔄 updateStatus called: ${status}, isSignedIn: ${isSignedIn}`
+      );
+
+      if (!isSignedIn) {
+        console.log(`❌ Not signed in, skipping status update`);
+        return;
+      }
 
       try {
-        // Get consistent deviceId across all tables
-        const deviceId = await getDeviceId();
+        const result = await updateUserStatus({ status });
+        console.log(`✅ Status updated:`, result);
 
-        await updateSessionStatus({
-          clerkSessionId: session.id,
-          status,
-          deviceId: deviceId || `device_${userId}`,
-        });
-
-        const newIsOnline = status === "logged_in";
-        setIsOnline(newIsOnline);
-        console.log(`Status updated to: ${status}, isOnline: ${newIsOnline}`);
+        setIsOnline(result?.isOnline || false);
       } catch (error) {
-        console.error("Failed to update session status:", error);
+        console.error("❌ Failed to update user status:", error);
       }
     },
-    [session?.id, isSignedIn, userId, updateSessionStatus]
+    [isSignedIn, updateUserStatus]
   );
 
   /**
@@ -54,25 +52,33 @@ export const useUserPresence = () => {
    */
   const handleAppStateChange = useCallback(
     async (nextAppState: AppStateStatus) => {
+      console.log(
+        `📱 App state: ${previousAppState.current} → ${nextAppState}`
+      );
       setAppState(nextAppState);
 
-      if (!isSignedIn || !session?.id) return;
+      if (!isSignedIn) {
+        console.log(`❌ Not signed in, skipping app state change`);
+        return;
+      }
 
       // App coming to foreground
       if (previousAppState.current !== "active" && nextAppState === "active") {
-        await updateStatus("logged_in");
+        console.log(`🟢 App active - going online`);
+        await updateStatus("online");
       }
       // App going to background or inactive
       else if (
         previousAppState.current === "active" &&
         (nextAppState === "background" || nextAppState === "inactive")
       ) {
-        await updateStatus("app_background");
+        console.log(`🟡 App backgrounded - going offline`);
+        await updateStatus("offline");
       }
 
       previousAppState.current = nextAppState;
     },
-    [isSignedIn, session?.id, updateStatus]
+    [isSignedIn, updateStatus]
   );
 
   /**
@@ -81,6 +87,9 @@ export const useUserPresence = () => {
   useEffect(() => {
     const handleAuthChange = async () => {
       const currentlySignedIn = !!isSignedIn;
+      console.log(
+        `🔐 Auth change: ${previousAuthState.current} → ${currentlySignedIn}, appState: ${appState}`
+      );
 
       // User just logged in
       if (
@@ -88,11 +97,14 @@ export const useUserPresence = () => {
         currentlySignedIn &&
         appState === "active"
       ) {
-        await updateStatus("logged_in");
+        console.log(`🟢 User logged in - going online`);
+        await updateStatus("online");
       }
       // User just logged out
       else if (previousAuthState.current && !currentlySignedIn) {
-        await updateStatus("logged_out");
+        console.log(`🔴 User logged out - going offline`);
+        await updateStatus("offline");
+        setIsOnline(false);
       }
 
       previousAuthState.current = currentlySignedIn;
@@ -113,52 +125,47 @@ export const useUserPresence = () => {
   }, [handleAppStateChange]);
 
   /**
-   * Initialize session on mount if user is already signed in and app is active
+   * Initialize status on mount
    */
   useEffect(() => {
-    if (isSignedIn && appState === "active" && session?.id) {
-      updateStatus("logged_in");
+    console.log(
+      `🚀 Initialize: isSignedIn: ${isSignedIn}, appState: ${appState}`
+    );
+    if (isSignedIn && appState === "active") {
+      console.log(`🟢 Initial setup - going online`);
+      updateStatus("online");
     }
-  }, [isSignedIn, appState, session?.id, updateStatus]);
+  }, [isSignedIn, appState, updateStatus]);
 
   /**
-   * Cleanup on unmount - mark as logged out
+   * Cleanup on unmount
    */
   useEffect(() => {
     return () => {
-      if (session?.id && isSignedIn) {
-        // Don't await here as component is unmounting
-        (async () => {
-          try {
-            const deviceId = await getDeviceId();
-
-            updateSessionStatus({
-              clerkSessionId: session.id,
-              status: "logged_out",
-              deviceId: deviceId || `device_${userId}`,
-            }).catch(console.error);
-          } catch (error) {
-            console.error("Error during cleanup logout:", error);
-          }
-        })();
+      if (isSignedIn) {
+        console.log(`🔴 Component unmounting - going offline`);
+        updateUserStatus({ status: "offline" }).catch(console.error);
       }
     };
-  }, [session?.id, isSignedIn, userId, updateSessionStatus]);
+  }, [isSignedIn, updateUserStatus]);
 
   /**
-   * Record user activity (manual trigger for updating presence)
+   * Record user activity (for heartbeat)
    */
-  const recordActivity = useCallback(async () => {
-    if (isSignedIn && session?.id && appState === "active") {
-      await updateStatus("logged_in");
+  const recordUserActivity = useCallback(async () => {
+    if (isSignedIn && appState === "active") {
+      try {
+        await recordActivity();
+      } catch (error) {
+        console.error("Failed to record activity:", error);
+      }
     }
-  }, [isSignedIn, session?.id, appState, updateStatus]);
+  }, [isSignedIn, appState, recordActivity]);
 
   return {
-    isOnline: !!(isOnline && isSignedIn && appState === "active"),
-    sessionId: session?.id || null,
+    isOnline: !!(isOnline && isSignedIn),
     appState,
-    recordActivity,
+    recordActivity: recordUserActivity,
   };
 };
 
@@ -195,7 +202,7 @@ export const useMultipleUsersOnlineStatus = (userIds: Id<"users">[]) => {
 };
 
 /**
- * Hook to get list of online users (for admin/debugging)
+ * Hook to get list of online users
  */
 export const useOnlineUsers = (limit?: number) => {
   const onlineUsers = useQuery(api.userPresence.getOnlineUsers, {
