@@ -7,6 +7,7 @@ import {
   rateLimitedAuthMutationMedium,
   rateLimitedOptionalAuthQuery,
 } from "./rateLimitedFunctions";
+import { POST_TABLE, USER_TABLE } from "./schema";
 
 /**
  * Get paginated posts for the authenticated user
@@ -90,7 +91,7 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
         v.literal("friends_only")
       )
     ),
-    includeViewed: v.optional(v.boolean()), // Allow client to request viewed posts
+    includeViewed: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Get blocked user IDs if user is authenticated
@@ -145,9 +146,7 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
       query = query.filter((q: any) => q.eq(q.field("visibility"), "public"));
     }
 
-    const paginatedResult = await query
-      .order("desc") // Most recent first
-      .paginate(args.paginationOpts);
+    const paginatedResult = await query.paginate(args.paginationOpts);
 
     // Filter out posts from blocked users first
     const postsFromNonBlockedUsers = paginatedResult.page.filter(
@@ -207,22 +206,61 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
       }
     }
 
+    // Create deterministic shuffle using daily seed + user ID to prevent jumpy posts
+    const shuffledPosts = filteredPosts.slice();
+
+    // Use current date + user ID as seed for consistent daily ordering per user
+    const today = new Date();
+    const baseSeed =
+      today.getFullYear() * 10000 +
+      (today.getMonth() + 1) * 100 +
+      today.getDate();
+
+    // Add user-specific component to seed for personalized but stable ordering
+    // Use a robust string hash to avoid NaN from non-hex characters in IDs
+    const userSeed = ctx.user
+      ? Array.from(ctx.user._id).reduce((hash, ch) => {
+          return ((hash << 5) - hash + ch.charCodeAt(0)) >>> 0; // 32-bit unsigned hash
+        }, 0)
+      : 0;
+    const dailySeed = baseSeed + userSeed;
+
+    // Seeded random function for deterministic shuffle
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    };
+
+    // Deterministic Durstenfeld shuffle with daily seed (guarding against invalid indices)
+    for (let i = shuffledPosts.length - 1; i > 0; i--) {
+      const rand = seededRandom(dailySeed + i);
+      const j = Number.isFinite(rand) ? Math.floor(rand * (i + 1)) : 0;
+      const temp = shuffledPosts[i];
+      shuffledPosts[i] = shuffledPosts[j];
+      shuffledPosts[j] = temp;
+    }
+
+    // Filter out any holes or accidental non-object entries caused by bad indices
+    const cleanShuffledPosts = shuffledPosts.filter(
+      (p: any): p is POST_TABLE => p && typeof p === "object" && "_id" in p
+    );
+
     // Enrich posts with additional data
     const enrichedPosts = await Promise.all(
-      filteredPosts.map(async (post: any) => {
-        // Get author info (unless anonymous and not the current user)
+      cleanShuffledPosts.map(async (post: POST_TABLE) => {
         let author = null;
-        if (!post.isAnonymous || post.authorId === ctx.user?._id) {
-          const authorDoc = await ctx.db.get(post.authorId);
-          if (authorDoc) {
-            // Since post.authorId is guaranteed to be a user ID, this should be a user
-            const userDoc = authorDoc as any;
-            author = {
-              _id: userDoc._id,
-              userName: userDoc.userName,
-              imageUrl: userDoc.imageUrl,
-            };
-          }
+
+        const authorDoc = await ctx.db.get(post.authorId);
+
+        if (authorDoc) {
+          const userDoc = authorDoc as USER_TABLE;
+          author = {
+            _id: userDoc._id,
+            userName: userDoc.userName,
+            imageUrl: userDoc.imageUrl,
+            age: userDoc.age,
+            gender: userDoc.gender,
+          };
         }
 
         // Check if current user has liked this post
@@ -241,7 +279,6 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
           ...post,
           author,
           hasLiked,
-          // likesCount and commentsCount are already in the post document
         };
       })
     );
@@ -249,9 +286,9 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     return {
       ...paginatedResult,
       page: enrichedPosts,
-      isDone: isDoneState && filteredPosts.length === 0, // Override isDone logic
+      isDone: isDoneState && cleanShuffledPosts.length === 0,
       metadata: {
-        totalFilteredPosts: filteredPosts.length,
+        totalFilteredPosts: cleanShuffledPosts.length,
         nonViewedPostsCount: nonViewedPosts.length,
         viewedPostsCount: viewedPosts.length,
         blockedUsersFiltered: blockedUserIds.length,
@@ -351,7 +388,6 @@ export const createPost = rateLimitedAuthMutationMedium({
       v.literal("advice"),
       v.literal("other")
     ),
-    isAnonymous: v.boolean(),
     tags: v.optional(v.array(v.string())),
     visibility: v.union(
       v.literal("public"),
@@ -530,25 +566,14 @@ export const getPostById = rateLimitedOptionalAuthQuery({
       throw new Error("Authentication required to view this post");
     }
 
-    // Get author info (unless anonymous and not the current user)
+    // Author info is only shown to the owner; all others remain anonymous
     let author = null;
     if (post.authorId === ctx.user?._id) {
-      // Always show author info for own posts
       author = {
         _id: ctx.user._id,
         userName: ctx.user.userName,
         imageUrl: ctx.user.imageUrl,
       };
-    } else {
-      const authorDoc = await ctx.db.get(post.authorId);
-      if (authorDoc) {
-        const userDoc = authorDoc as any;
-        author = {
-          _id: userDoc._id,
-          userName: userDoc.userName,
-          imageUrl: userDoc.imageUrl,
-        };
-      }
     }
 
     // Check if current user has liked this post
@@ -814,17 +839,14 @@ export const getPopularPosts = rateLimitedOptionalAuthQuery({
     // Enrich posts with additional data
     const enrichedPosts = await Promise.all(
       topPosts.map(async (post: any) => {
-        // Get author info (handle anonymous posts)
+        // Only show author for the current user's own posts
         let author = null;
-        if (!post.isAnonymous && post.authorId) {
-          const authorDoc = await ctx.db.get(post.authorId);
-          if (authorDoc && "userName" in authorDoc) {
-            author = {
-              _id: authorDoc._id,
-              userName: authorDoc.userName,
-              imageUrl: authorDoc.imageUrl,
-            };
-          }
+        if (ctx.user && post.authorId === ctx.user._id) {
+          author = {
+            _id: ctx.user._id,
+            userName: ctx.user.userName,
+            imageUrl: ctx.user.imageUrl,
+          };
         }
 
         // Check if current user has liked this post
@@ -983,16 +1005,14 @@ export const getTrendingPosts = rateLimitedOptionalAuthQuery({
     // Enrich with user data
     const enrichedPosts = await Promise.all(
       trendingPosts.map(async (post: any) => {
+        // Only show author for the current user's own posts
         let author = null;
-        if (!post.isAnonymous && post.authorId) {
-          const authorDoc = await ctx.db.get(post.authorId);
-          if (authorDoc && "userName" in authorDoc) {
-            author = {
-              _id: authorDoc._id,
-              userName: authorDoc.userName,
-              imageUrl: authorDoc.imageUrl,
-            };
-          }
+        if (ctx.user && post.authorId === ctx.user._id) {
+          author = {
+            _id: ctx.user._id,
+            userName: ctx.user.userName,
+            imageUrl: ctx.user.imageUrl,
+          };
         }
 
         let hasLiked = false;
@@ -1237,10 +1257,6 @@ export const getTrendingTopics = query({
         );
 
         if (keywordMatches.length > 0) {
-          // Use the most specific/longest matching keyword
-          const bestMatch = keywordMatches.reduce((a, b) =>
-            a.length > b.length ? a : b
-          );
           const topicKey = category.toLowerCase();
 
           const current = topicScores.get(topicKey) || {

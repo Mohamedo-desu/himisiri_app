@@ -169,7 +169,7 @@ export const replies = defineTable({
   commentId: v.id("comments"), // The comment this reply belongs to
   postId: v.id("posts"), // The original post (for easier querying)
   authorId: v.id("users"), // Author of the reply
-  content: v.string(), // Reply content // Whether the reply is anonymous
+  content: v.string(), // Reply content
   likesCount: v.number(), // Number of likes on the reply
   reportsCount: v.optional(v.number()), // Number of reports on this reply
   status: v.union(

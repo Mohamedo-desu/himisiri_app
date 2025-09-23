@@ -1,10 +1,15 @@
 import PostCard from "@/components/home-screen/PostCard";
 import { api } from "@/convex/_generated/api";
+import {
+  RecentSearch,
+  RecentSearchesService,
+} from "@/services/recentSearchesService";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Easing,
   FlatList,
   ScrollView,
@@ -25,6 +30,8 @@ const ExploreScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("week");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
 
   // Fetch popular posts with enhanced parameters
   const popularPosts = useQuery(api.posts.getPopularPosts, {
@@ -44,13 +51,63 @@ const ExploreScreen = () => {
     timeframe: timeframe === "month" ? "week" : timeframe, // Trending posts work better with shorter timeframes
   });
 
+  // Load recent searches on component mount
+  useEffect(() => {
+    loadRecentSearches();
+  }, []);
+
+  const loadRecentSearches = async () => {
+    const searches = await RecentSearchesService.getRecentSearches();
+    setRecentSearches(searches);
+  };
+
   // Search functionality
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (searchQuery.trim()) {
-      // For now, just log the search - we'll implement search later
+      // Save to recent searches
+      await RecentSearchesService.addRecentSearch(searchQuery.trim());
+      // Reload recent searches
+      await loadRecentSearches();
+
       console.log("Search for:", searchQuery.trim());
       // TODO: Navigate to search results
+      setIsSearchFocused(false);
     }
+  };
+
+  const handleRecentSearchPress = async (search: RecentSearch) => {
+    setSearchQuery(search.query);
+    setIsSearchFocused(false);
+
+    // Move this search to the top of recent searches
+    await RecentSearchesService.addRecentSearch(search.query);
+    await loadRecentSearches();
+
+    console.log("Search for recent:", search.query);
+    // TODO: Navigate to search results
+  };
+
+  const handleRemoveRecentSearch = async (searchId: string) => {
+    await RecentSearchesService.removeRecentSearch(searchId);
+    await loadRecentSearches();
+  };
+
+  const handleClearAllSearches = () => {
+    Alert.alert(
+      "Clear Search History",
+      "Are you sure you want to clear all recent searches?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: async () => {
+            await RecentSearchesService.clearAllRecentSearches();
+            await loadRecentSearches();
+          },
+        },
+      ]
+    );
   };
 
   const categories = [
@@ -114,6 +171,8 @@ const ExploreScreen = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
           returnKeyType="search"
         />
         {searchQuery.length > 0 && (
@@ -123,251 +182,337 @@ const ExploreScreen = () => {
         )}
       </View>
 
-      {/* Trending Topics */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <IconsSolid.FireIcon size={20} color="#FF6B6B" />
-          <Text
-            style={[styles.sectionTitle, { color: theme.colors.onBackground }]}
-          >
-            Trending Now
-          </Text>
-        </View>
-
-        {/* Timeframe Selector */}
-        <View style={styles.timeframeContainer}>
-          {(["day", "week", "month"] as const).map((period) => (
-            <TouchableOpacity
-              key={period}
+      {/* Recent Searches */}
+      {isSearchFocused && recentSearches.length > 0 && (
+        <View style={styles.recentSearchesContainer}>
+          <View style={styles.recentSearchesHeader}>
+            <Text
               style={[
-                styles.timeframeButton,
-                {
-                  backgroundColor:
-                    timeframe === period
-                      ? theme.colors.primary
-                      : theme.colors.background,
-                  borderColor: theme.colors.primary,
-                },
+                styles.recentSearchesTitle,
+                { color: theme.colors.onBackground },
               ]}
-              onPress={() => setTimeframe(period)}
             >
+              Recent Searches
+            </Text>
+            <TouchableOpacity onPress={handleClearAllSearches}>
               <Text
-                style={[
-                  styles.timeframeText,
-                  {
-                    color:
-                      timeframe === period
-                        ? theme.colors.onPrimary
-                        : theme.colors.primary,
-                  },
-                ]}
+                style={[styles.clearAllText, { color: theme.colors.primary }]}
               >
-                {period === "day"
-                  ? "Today"
-                  : period === "week"
-                    ? "This Week"
-                    : "This Month"}
+                Clear All
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.topicsContainer}
-        >
-          {trendingTopics?.length
-            ? trendingTopics.map((topic: string, index: number) => (
+          <View style={styles.recentSearchesList}>
+            {recentSearches.map((search) => (
+              <TouchableOpacity
+                key={search.id}
+                style={[
+                  styles.recentSearchItem,
+                  { backgroundColor: theme.colors.surface },
+                ]}
+                onPress={() => handleRecentSearchPress(search)}
+              >
+                <View style={styles.recentSearchContent}>
+                  <IconsOutline.ClockIcon
+                    size={16}
+                    color={theme.colors.grey400}
+                  />
+                  <Text
+                    style={[
+                      styles.recentSearchText,
+                      { color: theme.colors.onBackground },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {search.query}
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  key={index}
+                  onPress={() => handleRemoveRecentSearch(search.id)}
+                  style={styles.removeSearchButton}
+                >
+                  <IconsOutline.XMarkIcon
+                    size={14}
+                    color={theme.colors.grey400}
+                  />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Show main content only when search is not focused */}
+      {!isSearchFocused && (
+        <>
+          {/* Trending Topics */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <IconsSolid.FireIcon size={20} color="#FF6B6B" />
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.colors.onBackground },
+                ]}
+              >
+                Trending Now
+              </Text>
+            </View>
+
+            {/* Timeframe Selector */}
+            <View style={styles.timeframeContainer}>
+              {(["day", "week", "month"] as const).map((period) => (
+                <TouchableOpacity
+                  key={period}
                   style={[
-                    styles.topicChip,
-                    { backgroundColor: theme.colors.primary },
+                    styles.timeframeButton,
+                    {
+                      backgroundColor:
+                        timeframe === period
+                          ? theme.colors.primary
+                          : theme.colors.background,
+                      borderColor: theme.colors.primary,
+                    },
                   ]}
-                  onPress={() => console.log("Search for topic:", topic)}
+                  onPress={() => setTimeframe(period)}
                 >
                   <Text
                     style={[
-                      styles.topicText,
-                      { color: theme.colors.onPrimary },
+                      styles.timeframeText,
+                      {
+                        color:
+                          timeframe === period
+                            ? theme.colors.onPrimary
+                            : theme.colors.primary,
+                      },
                     ]}
                   >
-                    #{topic}
+                    {period === "day"
+                      ? "Today"
+                      : period === "week"
+                        ? "This Week"
+                        : "This Month"}
                   </Text>
                 </TouchableOpacity>
-              ))
-            : ["Love", "Work", "Family", "Secrets", "Dreams", "Regrets"].map(
-                (topic, index) => (
+              ))}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.topicsContainer}
+            >
+              {trendingTopics?.length
+                ? trendingTopics.map((topic: string, index: number) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.topicChip,
+                        { backgroundColor: theme.colors.primary },
+                      ]}
+                      onPress={() => console.log("Search for topic:", topic)}
+                    >
+                      <Text
+                        style={[
+                          styles.topicText,
+                          { color: theme.colors.onPrimary },
+                        ]}
+                      >
+                        #{topic}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                : [
+                    "Love",
+                    "Work",
+                    "Family",
+                    "Secrets",
+                    "Dreams",
+                    "Regrets",
+                  ].map((topic, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.topicChip,
+                        { backgroundColor: theme.colors.primary },
+                      ]}
+                      onPress={() => console.log("Search for topic:", topic)}
+                    >
+                      <Text
+                        style={[
+                          styles.topicText,
+                          { color: theme.colors.onPrimary },
+                        ]}
+                      >
+                        #{topic}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+            </ScrollView>
+          </View>
+
+          {/* Trending Posts */}
+          {trendingPosts && trendingPosts.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <IconsSolid.BoltIcon size={20} color="#FF9500" />
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { color: theme.colors.onBackground },
+                  ]}
+                >
+                  🚀 Trending Posts
+                </Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.trendingPostsContainer}
+              >
+                {trendingPosts.map((post: any, index: number) => (
                   <TouchableOpacity
-                    key={index}
+                    key={post._id}
                     style={[
-                      styles.topicChip,
-                      { backgroundColor: theme.colors.primary },
+                      styles.trendingPostCard,
+                      { backgroundColor: theme.colors.surface },
                     ]}
-                    onPress={() => console.log("Search for topic:", topic)}
+                    onPress={() => router.push(`/post/${post._id}`)}
                   >
                     <Text
                       style={[
-                        styles.topicText,
-                        { color: theme.colors.onPrimary },
+                        styles.trendingPostContent,
+                        { color: theme.colors.onSurface },
+                      ]}
+                      numberOfLines={3}
+                    >
+                      {post.content}
+                    </Text>
+                    <View style={styles.trendingPostMeta}>
+                      <View style={styles.trendingPostStats}>
+                        <IconsSolid.HeartIcon size={12} color="#FF6B6B" />
+                        <AnimatedNumbers
+                          includeComma
+                          animateToNumber={post.likesCount || 0}
+                          fontStyle={[
+                            styles.trendingPostStat,
+                            { color: theme.colors.grey500 },
+                          ]}
+                          easing={Easing.out(Easing.cubic)}
+                        />
+                        <IconsSolid.ChatBubbleLeftIcon
+                          size={12}
+                          color="#4ECDC4"
+                        />
+                        <Text
+                          style={[
+                            styles.trendingPostStat,
+                            { color: theme.colors.grey500 },
+                          ]}
+                        >
+                          Hot
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Categories */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <IconsSolid.Squares2X2Icon
+                size={20}
+                color={theme.colors.primary}
+              />
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.colors.onBackground },
+                ]}
+              >
+                Explore Categories
+              </Text>
+            </View>
+
+            <View style={styles.categoriesGrid}>
+              {categories.map((category, index) => {
+                const IconComponent =
+                  selectedCategory === category.name
+                    ? category.activeIcon
+                    : category.icon;
+                const isSelected = selectedCategory === category.name;
+
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.categoryCard,
+                      { backgroundColor: theme.colors.surface },
+                      isSelected && {
+                        backgroundColor: category.color + "20",
+                        borderColor: category.color,
+                        borderWidth: 2,
+                      },
+                    ]}
+                    onPress={() => {
+                      setSelectedCategory(isSelected ? null : category.name);
+                      console.log("Selected category:", category.name);
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.categoryIconContainer,
+                        { backgroundColor: category.color + "20" },
                       ]}
                     >
-                      #{topic}
+                      <IconComponent size={24} color={category.color} />
+                    </View>
+                    <Text
+                      style={[
+                        styles.categoryName,
+                        { color: theme.colors.onBackground },
+                      ]}
+                    >
+                      {category.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.categoryDescription,
+                        { color: theme.colors.grey500 },
+                      ]}
+                    >
+                      {category.description}
                     </Text>
                   </TouchableOpacity>
-                )
-              )}
-        </ScrollView>
-      </View>
+                );
+              })}
+            </View>
+          </View>
 
-      {/* Trending Posts */}
-      {trendingPosts && trendingPosts.length > 0 && (
-        <View style={styles.section}>
+          {/* Popular Posts Header */}
           <View style={styles.sectionHeader}>
-            <IconsSolid.BoltIcon size={20} color="#FF9500" />
+            <IconsSolid.TrophyIcon size={20} color="#FFD700" />
             <Text
               style={[
                 styles.sectionTitle,
                 { color: theme.colors.onBackground },
               ]}
             >
-              🚀 Trending Posts
+              Popular{" "}
+              {timeframe === "day"
+                ? "Today"
+                : timeframe === "week"
+                  ? "This Week"
+                  : "This Month"}
             </Text>
           </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.trendingPostsContainer}
-          >
-            {trendingPosts.map((post: any, index: number) => (
-              <TouchableOpacity
-                key={post._id}
-                style={[
-                  styles.trendingPostCard,
-                  { backgroundColor: theme.colors.surface },
-                ]}
-                onPress={() => router.push(`/post/${post._id}`)}
-              >
-                <Text
-                  style={[
-                    styles.trendingPostContent,
-                    { color: theme.colors.onSurface },
-                  ]}
-                  numberOfLines={3}
-                >
-                  {post.content}
-                </Text>
-                <View style={styles.trendingPostMeta}>
-                  <View style={styles.trendingPostStats}>
-                    <IconsSolid.HeartIcon size={12} color="#FF6B6B" />
-                    <AnimatedNumbers
-                      includeComma
-                      animateToNumber={post.likesCount || 0}
-                      fontStyle={[
-                        styles.trendingPostStat,
-                        { color: theme.colors.grey500 },
-                      ]}
-                      easing={Easing.out(Easing.cubic)}
-                    />
-                    <IconsSolid.ChatBubbleLeftIcon size={12} color="#4ECDC4" />
-                    <Text
-                      style={[
-                        styles.trendingPostStat,
-                        { color: theme.colors.grey500 },
-                      ]}
-                    >
-                      Hot
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        </>
       )}
-
-      {/* Categories */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <IconsSolid.Squares2X2Icon size={20} color={theme.colors.primary} />
-          <Text
-            style={[styles.sectionTitle, { color: theme.colors.onBackground }]}
-          >
-            Explore Categories
-          </Text>
-        </View>
-
-        <View style={styles.categoriesGrid}>
-          {categories.map((category, index) => {
-            const IconComponent =
-              selectedCategory === category.name
-                ? category.activeIcon
-                : category.icon;
-            const isSelected = selectedCategory === category.name;
-
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.categoryCard,
-                  { backgroundColor: theme.colors.surface },
-                  isSelected && {
-                    backgroundColor: category.color + "20",
-                    borderColor: category.color,
-                    borderWidth: 2,
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedCategory(isSelected ? null : category.name);
-                  console.log("Selected category:", category.name);
-                }}
-              >
-                <View
-                  style={[
-                    styles.categoryIconContainer,
-                    { backgroundColor: category.color + "20" },
-                  ]}
-                >
-                  <IconComponent size={24} color={category.color} />
-                </View>
-                <Text
-                  style={[
-                    styles.categoryName,
-                    { color: theme.colors.onBackground },
-                  ]}
-                >
-                  {category.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.categoryDescription,
-                    { color: theme.colors.grey500 },
-                  ]}
-                >
-                  {category.description}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Popular Posts Header */}
-      <View style={styles.sectionHeader}>
-        <IconsSolid.TrophyIcon size={20} color="#FFD700" />
-        <Text
-          style={[styles.sectionTitle, { color: theme.colors.onBackground }]}
-        >
-          Popular{" "}
-          {timeframe === "day"
-            ? "Today"
-            : timeframe === "week"
-              ? "This Week"
-              : "This Month"}
-        </Text>
-      </View>
     </View>
   );
 
@@ -591,5 +736,62 @@ const styles = StyleSheet.create((theme) => ({
   trendingPostStat: {
     fontSize: 11,
     fontWeight: "500",
+  },
+  recentSearchesContainer: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 20,
+    shadowColor: theme.colors.grey500,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  recentSearchesHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.grey200,
+  },
+  recentSearchesTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  clearAllText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  recentSearchesList: {
+    gap: 6,
+  },
+  recentSearchItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+    backgroundColor: theme.colors.background,
+  },
+  recentSearchContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
+  recentSearchText: {
+    fontSize: 15,
+    flex: 1,
+    fontWeight: "400",
+  },
+  removeSearchButton: {
+    padding: 4,
+    marginLeft: 8,
   },
 }));

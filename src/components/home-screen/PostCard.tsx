@@ -1,62 +1,75 @@
 import { api } from "@/convex/_generated/api";
-import { POST_TABLE } from "@/convex/schema";
 import { useUserStore } from "@/store/useUserStore";
+import { EnrichedPost } from "@/types";
 import { moderateContent } from "@/utils/moderateContent";
-import { sharePost } from "@/utils/shareUtils";
 import { useMutation } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
   DeviceEventEmitter,
-  Easing,
   Modal,
-  ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
-import { SvgXml } from "react-native-svg";
+import { Easing } from "react-native-reanimated";
 import Toast from "react-native-toast-message";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import { PRIMARY_COLOR } from "unistyles";
 import { BlockUserButton } from "../ui/BlockUserComponents";
-import OnlineStatusIndicator from "../ui/OnlineStatusIndicator";
-import { ReportModal } from "../ui/ReportModal";
+import CustomText from "../ui/CustomText";
+import UserAvatar from "../ui/UserAvatar";
 
 type PostCardProps = {
-  post: POST_TABLE & {
-    author?: {
-      _id: string;
-      userName: string;
-      imageUrl?: string;
-    } | null;
-    hasLiked: boolean;
-  };
-  onPress?: () => void;
+  post: EnrichedPost;
   showFullContent?: boolean;
 };
 
-const PostCard = ({
-  post,
-  onPress,
-  showFullContent = false,
-}: PostCardProps) => {
+const ThemedMenuIcon = withUnistyles(
+  IconsOutline.EllipsisVerticalIcon,
+  (theme) => ({
+    size: theme.gap(3),
+    color: theme.colors.grey500,
+  })
+);
+const ThemedLikeIcon = withUnistyles(IconsSolid.HeartIcon, (theme) => ({
+  size: theme.gap(3),
+  color: theme.colors.primary,
+}));
+const ThemedUnlikeIcon = withUnistyles(IconsOutline.HeartIcon, (theme) => ({
+  size: theme.gap(3),
+  color: theme.colors.grey500,
+}));
+const ThemedShareIcon = withUnistyles(IconsSolid.ShareIcon, (theme) => ({
+  size: theme.gap(3),
+  color: theme.colors.grey500,
+}));
+const ThemedCommentIcon = withUnistyles(
+  IconsSolid.ChatBubbleLeftRightIcon,
+  (theme) => ({
+    size: theme.gap(3),
+    color: theme.colors.grey500,
+  })
+);
+const ThemedViewIcon = withUnistyles(IconsSolid.EyeIcon, (theme) => ({
+  size: theme.gap(3),
+  color: theme.colors.grey500,
+}));
+
+const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
   const { currentUser } = useUserStore();
-  const [showMenu, setShowMenu] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [editTitle, setEditTitle] = useState(post.title || "");
-  const [editContent, setEditContent] = useState(post.content);
-  const [editTags, setEditTags] = useState<string[]>(post.tags || []);
 
   const togglePostLike = useMutation(api.likes.togglePostLike);
   const updatePost = useMutation(api.posts.updatePost);
   const deletePost = useMutation(api.posts.deletePost);
+
+  const [likes, setLikes] = useState(post.likesCount || 0);
+  const [hasLiked, setHasLiked] = useState(post.hasLiked || false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const isMyPost =
     currentUser &&
@@ -69,15 +82,30 @@ const PostCard = ({
       return;
     }
 
+    if (hasLiked) {
+      setLikes((prev) => prev - 1);
+      setHasLiked(false);
+    } else {
+      setLikes((prev) => prev + 1);
+      setHasLiked(true);
+    }
+
     try {
       await togglePostLike({ postId: post._id });
-    } catch (error) {
+    } catch {
       Toast.show({
         type: "error",
         text1: "Failed to Like",
         text2: "Please try again later",
       });
     }
+  };
+
+  const handleView = () => {
+    router.navigate({
+      pathname: "/(main)/post/[id]",
+      params: { id: post._id },
+    });
   };
 
   const handleMenuPress = () => {
@@ -88,515 +116,129 @@ const PostCard = ({
     setShowMenu(true);
   };
 
-  const handleEditPost = () => {
-    setShowMenu(false);
-    setShowEditModal(true);
-  };
-
-  const handleSaveEdit = async () => {
-    try {
-      if (editContent.length < 10 || editContent.length > 5000) {
-        Toast.show({
-          type: "warning",
-          text1: "Invalid Content",
-          text2: "Post must be between 10 and 5000 characters",
-        });
-        return;
-      }
-
-      await updatePost({
-        postId: post._id,
-        content: editContent,
-        title: editTitle || undefined,
-        tags: editTags.length > 0 ? editTags : undefined,
-      });
-
-      setShowEditModal(false);
-      Toast.show({
-        type: "success",
-        text1: "Post Updated",
-        text2: "Your post has been updated successfully",
-      });
-    } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Update Failed",
-        text2: "Please try again later",
+  const handleUserPress = () => {
+    if (!post.author) return;
+    if (post.author._id === currentUser?._id) {
+      router.navigate("/(main)/(tabs)/profile");
+    } else {
+      router.navigate({
+        pathname: "/(main)/user/[userId]",
+        params: { userId: post.author._id },
       });
     }
   };
 
-  const handleDeletePost = () => {
-    setShowMenu(false);
-    Alert.alert(
-      "Delete Post",
-      "Are you sure you want to delete this post? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deletePost({ postId: post._id });
-              Toast.show({
-                type: "success",
-                text1: "Post Deleted",
-                text2: "Your post has been deleted successfully",
-              });
-            } catch (error) {
-              Toast.show({
-                type: "error",
-                text1: "Delete Failed",
-                text2: "Please try again later",
-              });
-            }
-          },
-        },
-      ]
-    );
-  };
+  if (!post.author) return null;
 
-  const handleHidePost = () => {
-    setShowMenu(false);
-    Alert.alert("Hide Post", "Hide this post from the public feed?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Hide",
-        onPress: async () => {
-          try {
-            // Change visibility to private to "hide" it from public feed
-            await updatePost({
-              postId: post._id,
-              visibility: "private",
-            });
-            Toast.show({
-              type: "success",
-              text1: "Post Hidden",
-              text2: "Your post has been hidden from public feed",
-            });
-          } catch (error) {
-            Toast.show({
-              type: "error",
-              text1: "Hide Failed",
-              text2: "Please try again later",
-            });
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleSharePost = async () => {
-    setShowMenu(false);
-    console.log("Share button clicked for post:", post._id);
-
-    // Simple test first
-    Alert.alert("Share Test", "Share button was clicked!");
-
-    try {
-      if (typeof sharePost !== "function") {
-        console.error("sharePost is not a function:", sharePost);
-        Toast.show({
-          type: "error",
-          text1: "Share Failed",
-          text2: "Share function not available",
-        });
-        return;
-      }
-
-      const result = await sharePost(
-        post._id,
-        post.title ? moderateContent(post.title) : undefined,
-        moderateContent(post.content),
-        post.author?.userName || "Anonymous"
-      );
-      console.log("Share result:", result);
-
-      if (result) {
-        Toast.show({
-          type: "success",
-          text1: "Shared Successfully",
-          text2: "Post has been shared",
-        });
-      }
-    } catch (error) {
-      console.error("Share error:", error);
-      Toast.show({
-        type: "error",
-        text1: "Share Failed",
-        text2: "Unable to share post at the moment",
-      });
-    }
-  };
-
-  const handleViewStats = () => {
-    setShowMenu(false);
-    Toast.show({
-      type: "info",
-      text1: "Post Statistics",
-      text2: `${post.likesCount || 0} likes • ${post.commentsCount || 0} comments • Created ${new Date(post._creationTime).toLocaleDateString()}`,
-    });
-  };
-
-  const handleReportPost = () => {
-    setShowMenu(false);
-    setShowReportModal(true);
-  };
-
-  const getPostTypeColor = (type: string) => {
-    switch (type) {
-      case "confession":
-        return "#FF6B6B";
-      case "story":
-        return "#4ECDC4";
-      case "question":
-        return "#45B7D1";
-      case "advice":
-        return "#FFA726";
-      case "other":
-        return "#9C27B0";
-      default:
-        return "#4B50B2"; // PRIMARY_COLOR from unistyles
-    }
-  };
-
-  const getPostTypeIcon = (type: string) => {
-    switch (type) {
-      case "confession":
-        return IconsOutline.HeartIcon;
-      case "story":
-        return IconsOutline.BookOpenIcon;
-      case "question":
-        return IconsOutline.QuestionMarkCircleIcon;
-      case "advice":
-        return IconsOutline.LightBulbIcon;
-      case "other":
-        return IconsOutline.ChatBubbleLeftIcon;
-      default:
-        return IconsOutline.ChatBubbleLeftIcon;
-    }
-  };
-
-  const PostTypeIcon = getPostTypeIcon(post.type);
-
-  const handleView = () => {
-    router.navigate({
-      pathname: "/(main)/post/[id]",
-      params: { id: post._id },
-    });
-  };
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={handleView}
-      activeOpacity={0.7}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        {/* Avatar */}
-        <TouchableOpacity
-          style={styles.avatar}
-          onPress={() => {
-            if (post.author?._id) {
-              if (post.author._id === currentUser?._id) {
-                // Navigate to own profile
-                router.push("/(main)/(tabs)/profile");
-              } else {
-                // Navigate to user details
-                router.push({
-                  pathname: "/(main)/user/[userId]",
-                  params: { userId: post.author._id },
-                });
-              }
-            }
-          }}
-        >
-          {post.author?.imageUrl ? (
-            <SvgXml xml={post.author.imageUrl} width={40} height={40} />
-          ) : (
-            <Text style={styles.avatarText}>
-              {post.author?.userName?.charAt(0).toUpperCase() || "?"}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* User Info */}
-        <View style={styles.userInfo}>
-          <View style={styles.userNameContainer}>
-            <Text style={styles.userName}>{post.author?.userName}</Text>
-            {post.author?._id && (
-              <OnlineStatusIndicator
-                userId={post.author._id as any}
-                size="small"
-                style={styles.onlineStatus}
-              />
-            )}
-          </View>
-          <Text style={styles.timestamp}>
-            {formatDistanceToNowStrict(post._creationTime)}
-            {post.editedAt && " • edited"}
-          </Text>
-        </View>
-
-        {/* Post Type Badge */}
-        <View
-          style={[
-            styles.typeBadge,
-            {
-              backgroundColor: getPostTypeColor(post.type),
-              marginRight: isMyPost ? 8 : 0,
-            },
-          ]}
-        >
-          <PostTypeIcon size={14} color="white" style={styles.typeIcon} />
-          <Text style={styles.typeBadgeText}>{post.type}</Text>
-        </View>
-
-        {/* Menu Button */}
-        <TouchableOpacity
-          onPress={handleMenuPress}
-          style={styles.menuButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <IconsOutline.EllipsisVerticalIcon size={18} color="#616161" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Title */}
-      {post.title && (
-        <Text
-          style={styles.title}
-          numberOfLines={showFullContent ? undefined : 2}
-        >
-          {moderateContent(post.title)}
-        </Text>
-      )}
-
-      {/* Content */}
-      <Text
-        style={styles.content}
-        numberOfLines={showFullContent ? undefined : 3}
+    <>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={handleView}
+        activeOpacity={0.8}
       >
-        {moderateContent(post.content)}
-      </Text>
-
-      {/* Tags */}
-      {post.tags && post.tags.length > 0 && (
-        <View style={styles.tagsContainer}>
-          {post.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>#{tag}</Text>
-            </View>
-          ))}
-          {post.tags.length > 3 && (
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>
-                +
-                <AnimatedNumbers
-                  includeComma
-                  animateToNumber={post.tags.length - 3}
-                  fontStyle={styles.tagText}
-                  easing={Easing.out(Easing.cubic)}
-                />
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Actions */}
-      <View style={styles.actions}>
-        {/* Like Button */}
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            post.hasLiked && { backgroundColor: "#4B50B2" + "20" },
-          ]}
-          onPress={handleLike}
-        >
-          {post.hasLiked ? (
-            <IconsSolid.HeartIcon
-              size={18}
-              color="#4B50B2"
-              style={styles.actionIcon}
+        {/* Header */}
+        <View style={styles.header}>
+          {/* Avatar */}
+          <TouchableOpacity style={styles.avatar} onPress={handleUserPress}>
+            <UserAvatar
+              imageUrl={post.author.imageUrl as string}
+              size={40}
+              userId={post.author._id}
             />
-          ) : (
-            <IconsOutline.HeartIcon
-              size={18}
-              color="#757575"
-              style={styles.actionIcon}
-            />
-          )}
-          <AnimatedNumbers
-            includeComma
-            animateToNumber={post.likesCount || 0}
-            fontStyle={[
-              styles.actionText,
-              post.hasLiked && { color: "#4B50B2" },
-            ]}
-            easing={Easing.out(Easing.cubic)}
-          />
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        {/* Comment Button */}
-        <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-          <IconsOutline.ChatBubbleLeftIcon
-            size={18}
-            color="#757575"
-            style={styles.actionIcon}
-          />
-          <AnimatedNumbers
-            includeComma
-            animateToNumber={post.commentsCount || 0}
-            fontStyle={styles.actionText}
-            easing={Easing.out(Easing.cubic)}
-          />
-        </TouchableOpacity>
+          {/* User Info */}
+          <View style={styles.userInfo}>
+            <CustomText variant="label" semibold color="onSurface">
+              {post.author?.userName}
+            </CustomText>
 
-        {/* View Count */}
-        <TouchableOpacity style={styles.actionButton} disabled>
-          <IconsOutline.EyeIcon
-            size={18}
-            color="#757575"
-            style={styles.actionIcon}
-          />
-          <AnimatedNumbers
-            includeComma
-            animateToNumber={post.viewsCount || 0}
-            fontStyle={styles.actionText}
-            easing={Easing.out(Easing.cubic)}
-          />
-        </TouchableOpacity>
-
-        {/* Spacer to push share button to the right */}
-        <View style={{ flex: 1 }} />
-
-        {/* Share Button */}
-        <TouchableOpacity style={styles.actionButton} onPress={handleSharePost}>
-          <IconsOutline.ShareIcon size={18} color="#757575" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Edit Modal */}
-      <Modal
-        visible={showEditModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowEditModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.editModal}>
-            <Text style={styles.editModalTitle}>Edit Post</Text>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Title Input */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Title (Optional)</Text>
-                <TextInput
-                  value={editTitle}
-                  onChangeText={setEditTitle}
-                  placeholder="Give your post a title..."
-                  placeholderTextColor="#BDBDBD"
-                  style={styles.textInput}
-                  maxLength={100}
-                />
-              </View>
-
-              {/* Content Input */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Content</Text>
-                <TextInput
-                  value={editContent}
-                  onChangeText={setEditContent}
-                  placeholder="What's on your mind..."
-                  placeholderTextColor="#BDBDBD"
-                  multiline
-                  numberOfLines={6}
-                  style={[styles.textInput, styles.contentInput]}
-                  maxLength={5000}
-                />
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: 4,
-                  }}
-                >
-                  <Text style={styles.characterCount}>
-                    <AnimatedNumbers
-                      includeComma
-                      animateToNumber={editContent.length}
-                      fontStyle={styles.characterCount}
-                      easing={Easing.out(Easing.cubic)}
-                    />
-                    /5000
-                  </Text>
-                </View>
-              </View>
-
-              {/* Tags Section */}
-              <View style={styles.formSection}>
-                <Text style={styles.formLabel}>Tags</Text>
-                {editTags.length > 0 && (
-                  <View style={styles.editTagsContainer}>
-                    {editTags.map((tag, index) => (
-                      <View key={index} style={styles.editTag}>
-                        <Text style={styles.editTagText}>#{tag}</Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setEditTags(editTags.filter((_, i) => i !== index));
-                          }}
-                        >
-                          <IconsOutline.XMarkIcon size={12} color="#FFFFFF" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                <Text style={styles.tagHint}>Tap a tag to remove it</Text>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.modalButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => {
-                    setShowEditModal(false);
-                    // Reset values
-                    setEditTitle(post.title || "");
-                    setEditContent(post.content);
-                    setEditTags(post.tags || []);
-                  }}
-                >
-                  <Text
-                    style={[styles.modalButtonText, styles.cancelButtonText]}
-                  >
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    styles.saveButton,
-                    editContent.length < 10 && styles.disabledButton,
-                  ]}
-                  onPress={handleSaveEdit}
-                  disabled={editContent.length < 10}
-                >
-                  <Text style={[styles.modalButtonText, styles.saveButtonText]}>
-                    Save Changes
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+            <CustomText variant="caption" color="grey500">
+              {post.author?.age}
+              {post.author?.gender?.charAt(0)}
+            </CustomText>
           </View>
-        </View>
-      </Modal>
 
-      {/* Menu Modal */}
+          {/* Menu Button */}
+          <TouchableOpacity onPress={handleMenuPress} hitSlop={10}>
+            <ThemedMenuIcon />
+          </TouchableOpacity>
+        </View>
+
+        {/* Title */}
+        {post.title && (
+          <CustomText
+            variant="subtitle2"
+            bold
+            color="onSurface"
+            numberOfLines={showFullContent ? undefined : 2}
+          >
+            {moderateContent(post.title)}
+          </CustomText>
+        )}
+
+        {/* Content */}
+        <CustomText
+          variant="body2"
+          color="grey800"
+          numberOfLines={showFullContent ? undefined : 3}
+        >
+          {moderateContent(post.content)}
+        </CustomText>
+        <CustomText variant="caption" color="grey500" style={styles.timeText}>
+          {formatDistanceToNowStrict(post._creationTime)}
+          {post.editedAt && " • edited"}
+        </CustomText>
+        {/* Actions */}
+        <View style={styles.actions}>
+          {/* Like Button */}
+          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+            {hasLiked ? <ThemedLikeIcon /> : <ThemedUnlikeIcon />}
+            <AnimatedNumbers
+              includeComma
+              animateToNumber={likes || 0}
+              fontStyle={[
+                styles.actionText,
+                hasLiked && { color: PRIMARY_COLOR },
+              ]}
+            />
+          </TouchableOpacity>
+
+          {/* Comment Button */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => undefined}
+          >
+            <ThemedCommentIcon />
+            <AnimatedNumbers
+              includeComma
+              animateToNumber={post.commentsCount || 0}
+              fontStyle={styles.actionText}
+              easing={Easing.out(Easing.cubic)}
+            />
+          </TouchableOpacity>
+
+          {/* View Count */}
+          <TouchableOpacity style={styles.actionButton} disabled>
+            <ThemedViewIcon />
+            <AnimatedNumbers
+              includeComma
+              animateToNumber={post.viewsCount || 0}
+              fontStyle={styles.actionText}
+              easing={Easing.out(Easing.cubic)}
+            />
+          </TouchableOpacity>
+
+          {/* Share Button */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => undefined}
+          >
+            <ThemedShareIcon />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
       <Modal
         visible={showMenu}
         transparent={true}
@@ -609,29 +251,15 @@ const PostCard = ({
           activeOpacity={1}
         >
           <View style={styles.menuModal}>
-            <Text style={styles.menuTitle}>Post Options</Text>
+            <CustomText variant="subtitle1" bold textAlign="center">
+              Post Options
+            </CustomText>
 
-            {/* Menu Options */}
             {isMyPost ? (
               <>
-                {/* My Post Options */}
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleViewStats}
-                >
-                  <IconsOutline.ChartBarIcon
-                    size={20}
-                    color="#4B50B2"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                    View Statistics
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={handleEditPost}
+                  onPress={() => undefined}
                 >
                   <IconsOutline.PencilIcon
                     size={20}
@@ -645,7 +273,7 @@ const PostCard = ({
 
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleSharePost}
+                  onPress={() => undefined}
                 >
                   <IconsOutline.ShareIcon
                     size={20}
@@ -659,7 +287,7 @@ const PostCard = ({
 
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleHidePost}
+                  onPress={() => undefined}
                 >
                   <IconsOutline.EyeSlashIcon
                     size={20}
@@ -673,7 +301,7 @@ const PostCard = ({
 
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleDeletePost}
+                  onPress={() => undefined}
                 >
                   <IconsOutline.TrashIcon
                     size={20}
@@ -690,7 +318,7 @@ const PostCard = ({
                 {/* Other User's Post Options */}
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleSharePost}
+                  onPress={() => undefined}
                 >
                   <IconsOutline.ShareIcon
                     size={20}
@@ -704,7 +332,7 @@ const PostCard = ({
 
                 <TouchableOpacity
                   style={styles.menuOption}
-                  onPress={handleReportPost}
+                  onPress={() => undefined}
                 >
                   <IconsOutline.FlagIcon
                     size={20}
@@ -750,157 +378,48 @@ const PostCard = ({
           </View>
         </TouchableOpacity>
       </Modal>
-
-      {/* Report Modal */}
-      <ReportModal
-        visible={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        contentId={post._id}
-        contentType="post"
-        contentAuthorId={post.author?._id as any}
-        contentAuthorName={post.author?.userName}
-      />
-    </TouchableOpacity>
+    </>
   );
 };
 
 export default PostCard;
 
 const styles = StyleSheet.create((theme) => ({
-  // Main card container
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: theme.radii.small,
+    padding: theme.paddingHorizontal,
   },
 
-  // Header section
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: theme.gap(1),
   },
 
-  // Avatar
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  avatarText: {
-    color: theme.colors.onPrimary,
-    fontSize: 16,
-    fontWeight: "bold",
+    marginRight: theme.gap(1),
   },
 
-  // User info
   userInfo: {
     flex: 1,
   },
-  userNameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  userName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.onSurface,
-  },
-  onlineStatus: {
-    marginLeft: 6,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: theme.colors.grey500,
+  timeText: {
+    marginTop: theme.gap(0.5),
   },
 
-  // Post type badge
-  typeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  typeBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "white",
-    textTransform: "capitalize",
-  },
-  typeIcon: {
-    marginRight: 4,
-  },
-
-  // Menu button
-  menuButton: {
-    padding: 4,
-    borderRadius: 20,
-    backgroundColor: theme.colors.grey100,
-  },
-
-  // Content
-  title: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.onSurface,
-    marginBottom: 8,
-  },
-  content: {
-    fontSize: 14,
-    color: theme.colors.onSurface,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-
-  // Tags
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 12,
-    gap: 6,
-  },
-  tag: {
-    backgroundColor: theme.colors.grey100,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  tagText: {
-    fontSize: 12,
-    color: theme.colors.grey600,
-  },
-
-  // Actions section
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.grey100,
+    justifyContent: "space-between",
+    marginTop: theme.gap(1),
   },
 
   // Action buttons
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    minWidth: 60, // Ensure consistent minimum width
+    gap: theme.gap(1),
   },
   actionIcon: {
     marginRight: 6,
@@ -910,144 +429,18 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: "500",
     color: theme.colors.grey500,
   },
-
-  // Modal overlays
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    padding: theme.paddingHorizontal,
   },
-
-  // Edit modal
-  editModal: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    margin: 20,
-    width: "90%",
-    maxHeight: "80%",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  editModalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: theme.colors.onSurface,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-
-  // Form sections
-  formSection: {
-    marginBottom: 16,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.onSurface,
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: theme.colors.background,
-    borderRadius: 8,
-    padding: 12,
-    color: theme.colors.onSurface,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.grey200,
-  },
-  contentInput: {
-    textAlignVertical: "top",
-    minHeight: 120,
-  },
-  characterCount: {
-    fontSize: 12,
-    color: theme.colors.grey500,
-    textAlign: "right",
-    marginTop: 4,
-  },
-
-  // Edit tags
-  editTagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 8,
-    gap: 6,
-  },
-  editTag: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  editTagText: {
-    color: theme.colors.onPrimary,
-    fontSize: 12,
-    marginRight: 4,
-  },
-  tagHint: {
-    fontSize: 12,
-    color: theme.colors.grey500,
-    marginBottom: 4,
-  },
-
-  // Modal buttons
-  modalButtonsContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.grey100,
-  },
-  saveButton: {
-    backgroundColor: theme.colors.primary,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelButtonText: {
-    color: theme.colors.grey600,
-  },
-  saveButtonText: {
-    color: theme.colors.onPrimary,
-  },
-
-  // Menu modal
   menuModal: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    margin: 20,
-    minWidth: 250,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: theme.colors.background,
+    padding: theme.paddingHorizontal,
+    borderRadius: theme.radii.regular,
+    width: "100%",
   },
   menuTitle: {
     fontSize: 18,
