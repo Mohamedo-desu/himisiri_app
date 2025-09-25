@@ -4,7 +4,7 @@ import { EnrichedPost } from "@/types";
 import { moderateContent } from "@/utils/moderateContent";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
-import { router } from "expo-router";
+import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
 import AnimatedNumbers from "react-native-animated-numbers";
@@ -24,6 +24,7 @@ import UserAvatar from "../ui/UserAvatar";
 type PostCardProps = {
   post: EnrichedPost;
   showFullContent?: boolean;
+  inSearchScreen?: boolean;
 };
 
 const ThemedMenuIcon = withUnistyles(
@@ -61,7 +62,11 @@ const ThemedFireIcon = withUnistyles(IconsSolid.FireIcon, (theme) => ({
   color: theme.colors.secondary,
 }));
 
-const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
+const PostCard = ({
+  post,
+  showFullContent = false,
+  inSearchScreen = false,
+}: PostCardProps) => {
   const { currentUser } = useUserStore();
 
   const togglePostLike = useMutation(api.likes.togglePostLike);
@@ -69,7 +74,7 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
   const [likes, setLikes] = useState(post.likesCount || 0);
   const [hasLiked, setHasLiked] = useState(post.hasLiked || false);
   const [showMenu, setShowMenu] = useState(false);
-  const [isTrending, setIsTrending] = useState(false);
+  const [isTrending] = useState(false);
 
   const isMyPost =
     currentUser &&
@@ -111,7 +116,7 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
 
   const handleView = () => {
     router.navigate({
-      pathname: "/(main)/post/[id]",
+      pathname: "/(drawer)/post/[id]",
       params: { id: post._id },
     });
   };
@@ -127,11 +132,11 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
   const handleUserPress = () => {
     if (!post.author) return;
     if (post.author._id === currentUser?._id) {
-      router.navigate("/(main)/(tabs)/profile");
+      router.navigate("/(drawer)/(tabs)/profile");
     } else {
       router.navigate({
-        pathname: "/(main)/user/[userId]",
-        params: { userId: post.author._id },
+        pathname: "/(drawer)/user/[id]",
+        params: { id: post.author._id },
       });
     }
   };
@@ -196,6 +201,7 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
               imageUrl={post.author.imageUrl as string}
               size={40}
               userId={post.author._id}
+              indicatorSize="medium"
             />
           </TouchableOpacity>
 
@@ -251,26 +257,41 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
         </CustomText>
 
         {/* Tags */}
-        {post.tags && post.tags.length > 0 && (
+
+        {post.tagsText && (
           <View style={styles.tagsContainer}>
-            {post.tags.slice(0, 3).map((tag, index) => (
-              <View key={index} style={styles.tag}>
-                <CustomText
-                  variant="caption"
-                  semibold
-                  style={{ color: TERTIARY_COLOR }}
-                >
-                  #{tag}
-                </CustomText>
-              </View>
-            ))}
-            {post.tags.length > 3 && (
-              <View style={styles.tag}>
-                <CustomText variant="caption" semibold color="onSecondary">
-                  +{post.tags.length - 3}
-                </CustomText>
-              </View>
-            )}
+            {post.tagsText
+              .split("#") // split on "#"
+              .filter((tag) => tag.trim().length > 0) // remove empty
+              .map((tag, index) =>
+                inSearchScreen ? (
+                  <CustomText
+                    key={index}
+                    variant="caption"
+                    semibold
+                    style={{ color: TERTIARY_COLOR }}
+                  >
+                    #{tag}
+                  </CustomText>
+                ) : (
+                  <Link
+                    key={index}
+                    style={styles.tag}
+                    href={{
+                      pathname: "/(drawer)/(tabs)/search/[tag]",
+                      params: { tag: tag.toLowerCase() },
+                    }}
+                  >
+                    <CustomText
+                      variant="caption"
+                      semibold
+                      style={{ color: TERTIARY_COLOR }}
+                    >
+                      #{tag}
+                    </CustomText>
+                  </Link>
+                )
+              )}
           </View>
         )}
 

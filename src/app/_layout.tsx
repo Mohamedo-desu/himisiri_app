@@ -35,7 +35,7 @@ Sentry.init(sentryConfig);
 handleExpoUpdateMetadata();
 
 export const unstable_settings = {
-  anchor: "(main)",
+  anchor: "(drawer)",
 };
 
 // Configure foreground notification handler

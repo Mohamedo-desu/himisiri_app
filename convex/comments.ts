@@ -240,15 +240,6 @@ export const deleteComment = authenticatedMutation({
       throw new Error("You can only delete your own comments");
     }
 
-    // Get all replies to this comment and delete them
-    const replies = await ctx.db
-      .query("replies")
-      .withIndex("by_comment", (q: any) => q.eq("commentId", args.commentId))
-      .collect();
-
-    // Delete all replies
-    await Promise.all(replies.map((reply) => ctx.db.delete(reply._id)));
-
     // Delete the comment
     await ctx.db.delete(args.commentId);
 

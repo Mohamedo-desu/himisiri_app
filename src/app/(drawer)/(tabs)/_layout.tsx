@@ -5,7 +5,7 @@ import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
 import { DrawerActions } from "@react-navigation/native";
 import { APP_NAME } from "constants/device";
 import { useQuery } from "convex/react";
-import { Tabs, useNavigation } from "expo-router";
+import { router, Tabs, useNavigation } from "expo-router";
 import React, { createContext } from "react";
 import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
@@ -28,10 +28,6 @@ interface NavItem {
 
 // Context to provide scrollY to all tab screens
 export const TabScrollYContext = createContext<any>(null);
-
-export const unstable_settings = {
-  anchor: "index",
-};
 
 const TabsLayout = () => {
   const { theme } = useUnistyles();
@@ -59,7 +55,7 @@ const TabsLayout = () => {
       solid: IconsSolid.MagnifyingGlassIcon,
       outline: IconsOutline.MagnifyingGlassIcon,
       headerShown: true,
-      headerTitle: "Explore",
+      headerTitle: "Search Tags",
     },
     {
       name: "notifications",
@@ -171,7 +167,17 @@ const TabsLayout = () => {
                     );
                   },
                 }),
-
+                ...(name === "search" && {
+                  headerLeft: () => (
+                    <TouchableOpacity
+                      style={styles.headerLeftContainer}
+                      activeOpacity={0.8}
+                      onPress={() => router.back()}
+                    >
+                      <IconsSolid.ArrowLeftIcon color={"white"} size={22} />
+                    </TouchableOpacity>
+                  ),
+                }),
                 tabBarIcon: ({ focused, size, color }) =>
                   focused ? (
                     <SolidIcon size={size} color={color} />

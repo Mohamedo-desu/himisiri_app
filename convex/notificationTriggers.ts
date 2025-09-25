@@ -91,47 +91,6 @@ notificationTriggers.register("commentLikes", async (ctx, change) => {
 });
 
 /**
- * Reply Like Notification Trigger
- * Sends notification when someone likes a reply
- */
-notificationTriggers.register("replyLikes", async (ctx, change) => {
-  if (change.operation === "insert" && change.newDoc) {
-    const like = change.newDoc;
-
-    // Get the reply to find the author
-    const reply = await ctx.db.get(like.replyId);
-    if (!reply) return;
-
-    // Don't notify if user liked their own reply
-    if (reply.authorId === like.userId) return;
-
-    // Get the liker's info
-    const liker = await ctx.db.get(like.userId);
-    if (!liker) return;
-
-    await ctx.scheduler.runAfter(
-      0,
-      internal.pushNotifications.sendNotificationWithPush,
-      {
-        userId: reply.authorId,
-        senderId: like.userId,
-        type: "like",
-        title: "New Like",
-        message: `${liker.userName} liked your reply`,
-        entityId: reply._id,
-        entityType: "reply",
-        metadata: {
-          replyContent:
-            reply.content?.substring(0, 50) +
-            (reply.content && reply.content.length > 50 ? "..." : ""),
-          postId: reply.postId,
-        },
-      }
-    );
-  }
-});
-
-/**
  * Comment Notification Trigger
  * Sends notification when someone comments on a post
  */
@@ -166,48 +125,6 @@ notificationTriggers.register("comments", async (ctx, change) => {
           commentContent:
             comment.content?.substring(0, 50) +
             (comment.content && comment.content.length > 50 ? "..." : ""),
-        },
-      }
-    );
-  }
-});
-
-/**
- * Reply Notification Trigger
- * Sends notification when someone replies to a comment
- */
-notificationTriggers.register("replies", async (ctx, change) => {
-  if (change.operation === "insert" && change.newDoc) {
-    const reply = change.newDoc;
-
-    // Get the comment to find the author
-    const comment = await ctx.db.get(reply.commentId);
-    if (!comment) return;
-
-    // Don't notify if user replied to their own comment
-    if (comment.authorId === reply.authorId) return;
-
-    // Get the replier's info
-    const replier = await ctx.db.get(reply.authorId);
-    if (!replier) return;
-
-    await ctx.scheduler.runAfter(
-      0,
-      internal.pushNotifications.sendNotificationWithPush,
-      {
-        userId: comment.authorId,
-        senderId: reply.authorId,
-        type: "reply",
-        title: "New Reply",
-        message: `${replier.userName} replied to your comment`,
-        entityId: comment._id,
-        entityType: "comment",
-        metadata: {
-          replyId: reply._id,
-          replyContent:
-            reply.content?.substring(0, 50) +
-            (reply.content && reply.content.length > 50 ? "..." : ""),
-          postId: reply.postId,
         },
       }
     );

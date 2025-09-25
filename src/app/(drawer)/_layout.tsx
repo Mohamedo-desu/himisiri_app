@@ -3,10 +3,6 @@ import { Drawer } from "expo-router/drawer";
 import React from "react";
 import { useUnistyles } from "react-native-unistyles";
 
-export const unstable_settings = {
-  anchor: "(tabs)",
-};
-
 const DrawerLayout = () => {
   const { theme } = useUnistyles();
 
@@ -31,6 +27,12 @@ const DrawerLayout = () => {
       }}
     >
       <Drawer.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Drawer.Screen
+        name="post"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Drawer>
   );
 };

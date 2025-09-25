@@ -2,7 +2,7 @@ import { Fonts } from "constants/Fonts";
 import { StyleSheet } from "react-native-unistyles";
 
 // Base spacing unit
-export const BASE_GAP = 6;
+export const BASE_GAP = 5;
 
 // Primary color used in both themes
 export const PRIMARY_COLOR = "#3C2A4D"; // deep purple for mystery & trust
@@ -127,6 +127,6 @@ declare module "react-native-unistyles" {
 
 StyleSheet.configure({
   settings: { adaptiveThemes: true },
-  themes: { light: lightTheme, dark: darkTheme },
+  themes: appThemes,
   breakpoints,
 });

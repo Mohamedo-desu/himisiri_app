@@ -151,9 +151,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "./plugins/customize.js",
     ],
     experiments: {
-      reactCanary: true,
-      typedRoutes: true,
+      reactCanary: false,
       reactCompiler: false,
+      typedRoutes: true,
     },
     owner: OWNER,
   };

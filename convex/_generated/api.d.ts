@@ -25,8 +25,6 @@ import type * as pushNotifications from "../pushNotifications.js";
 import type * as pushTokens from "../pushTokens.js";
 import type * as rateLimitedFunctions from "../rateLimitedFunctions.js";
 import type * as rateLimits from "../rateLimits.js";
-import type * as replies from "../replies.js";
-import type * as reports from "../reports.js";
 import type * as triggers from "../triggers.js";
 import type * as userBlocking from "../userBlocking.js";
 import type * as userPresence from "../userPresence.js";
@@ -53,8 +51,6 @@ declare const fullApi: ApiFromModules<{
   pushTokens: typeof pushTokens;
   rateLimitedFunctions: typeof rateLimitedFunctions;
   rateLimits: typeof rateLimits;
-  replies: typeof replies;
-  reports: typeof reports;
   triggers: typeof triggers;
   userBlocking: typeof userBlocking;
   userPresence: typeof userPresence;

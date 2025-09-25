@@ -45,76 +45,12 @@ export const pushTokens = defineTable({
   deviceId: v.string(), // Consistent deviceId across all tables
   timestamp: v.string(),
 });
-
 export const appVersions = defineTable({
   version: v.string(),
   type: v.union(v.literal("major"), v.literal("minor"), v.literal("patch")),
   releaseNotes: v.string(),
   downloadUrl: v.optional(v.string()),
 });
-
-export const reportedUsers = defineTable({
-  reporterId: v.id("users"), // User who is making the report
-  reportedUserId: v.id("users"), // User who is being reported
-  reason: v.union(
-    v.literal("harassment_bullying"), // Harassing or bullying behavior
-    v.literal("impersonation"), // Pretending to be someone else
-    v.literal("spam_account"), // Spam or bot account
-    v.literal("fake_account"), // Fake or fraudulent account
-    v.literal("inappropriate_behavior"), // General inappropriate behavior
-    v.literal("violation_guidelines"), // Violating community guidelines
-    v.literal("other") // Other user-related issues
-  ),
-  description: v.optional(v.string()), // Additional details about the report
-  status: v.union(
-    v.literal("pending"),
-    v.literal("reviewed"),
-    v.literal("resolved"),
-    v.literal("dismissed")
-  ),
-  adminNotes: v.optional(v.string()), // Notes from admin/moderator
-  reviewedBy: v.optional(v.id("users")), // Admin who reviewed the report
-  reviewedAt: v.optional(v.number()), // Timestamp when reviewed
-});
-
-export const reportedContents = defineTable({
-  reporterId: v.id("users"), // User who is making the report
-  contentId: v.string(), // ID of the content being reported (confession, post, comment)
-  contentType: v.union(
-    v.literal("confession"),
-    v.literal("post"),
-    v.literal("comment"),
-    v.literal("story"),
-    v.literal("other")
-  ),
-  contentAuthorId: v.id("users"), // Author of the reported content
-  reason: v.union(
-    v.literal("inappropriate_content"), // General inappropriate content
-    v.literal("false_information"), // Misinformation or fake stories
-    v.literal("hate_speech"), // Discriminatory language
-    v.literal("sexual_content"), // Inappropriate sexual content
-    v.literal("violence_threats"), // Violence or threats
-    v.literal("self_harm_content"), // Content promoting self-harm
-    v.literal("doxxing_personal_info"), // Sharing personal information
-    v.literal("illegal_activity"), // Content about illegal activities
-    v.literal("spam_repetitive"), // Spam or repetitive content
-    v.literal("copyright_violation"), // Copyright infringement
-    v.literal("other") // Other content-related issues
-  ),
-  description: v.optional(v.string()), // Additional details about the report
-  status: v.union(
-    v.literal("pending"),
-    v.literal("reviewed"),
-    v.literal("resolved"),
-    v.literal("dismissed")
-  ),
-  adminNotes: v.optional(v.string()), // Notes from admin/moderator
-  reviewedBy: v.optional(v.id("users")), // Admin who reviewed the report
-  reviewedAt: v.optional(v.number()), // Timestamp when reviewed
-  contentRemoved: v.optional(v.boolean()), // Whether the content was removed
-  contentRemovedAt: v.optional(v.number()), // When content was removed
-});
-
 export const posts = defineTable({
   authorId: v.id("users"), // Author of the post/confession
   content: v.string(), // The confession/post content
@@ -126,7 +62,7 @@ export const posts = defineTable({
     v.literal("advice"),
     v.literal("other")
   ),
-  tags: v.optional(v.array(v.string())), // Tags for categorization
+  tagsText: v.optional(v.string()), // Concatenated tags string e.g. #havetopay#emotional
   likesCount: v.number(), // Number of likes
   commentsCount: v.number(), // Number of comments
   viewsCount: v.optional(v.number()), // Number of unique views
@@ -147,7 +83,6 @@ export const posts = defineTable({
   moderatorNotes: v.optional(v.string()), // Notes from moderators
   editedAt: v.optional(v.number()), // Timestamp when last edited
 });
-
 export const comments = defineTable({
   postId: v.id("posts"), // The post this comment belongs to
   authorId: v.id("users"), // Author of the comment
@@ -164,58 +99,28 @@ export const comments = defineTable({
   moderatorNotes: v.optional(v.string()), // Notes from moderators
   editedAt: v.optional(v.number()), // Timestamp when last edited
 });
-
-export const replies = defineTable({
-  commentId: v.id("comments"), // The comment this reply belongs to
-  postId: v.id("posts"), // The original post (for easier querying)
-  authorId: v.id("users"), // Author of the reply
-  content: v.string(), // Reply content
-  likesCount: v.number(), // Number of likes on the reply
-  reportsCount: v.optional(v.number()), // Number of reports on this reply
-  status: v.union(
-    v.literal("active"),
-    v.literal("hidden"),
-    v.literal("removed"),
-    v.literal("pending_review")
-  ),
-  moderatorNotes: v.optional(v.string()), // Notes from moderators
-  editedAt: v.optional(v.number()), // Timestamp when last edited
-});
-
 export const postLikes = defineTable({
   userId: v.id("users"), // User who liked the post
   postId: v.id("posts"), // The post that was liked
   likedAt: v.optional(v.number()), // Timestamp when liked (optional, defaults to _creationTime)
 });
-
 export const commentLikes = defineTable({
   userId: v.id("users"), // User who liked the comment
   commentId: v.id("comments"), // The comment that was liked
   postId: v.id("posts"), // The original post (for easier querying)
   likedAt: v.optional(v.number()), // Timestamp when liked (optional, defaults to _creationTime)
 });
-
-export const replyLikes = defineTable({
-  userId: v.id("users"), // User who liked the reply
-  replyId: v.id("replies"), // The reply that was liked
-  commentId: v.id("comments"), // The parent comment (for easier querying)
-  postId: v.id("posts"), // The original post (for easier querying)
-  likedAt: v.optional(v.number()), // Timestamp when liked (optional, defaults to _creationTime)
-});
-
 export const follows = defineTable({
   followerId: v.id("users"), // User who is following
   followingId: v.id("users"), // User who is being followed
   followedAt: v.optional(v.number()), // Timestamp when followed (optional, defaults to _creationTime)
 });
-
 export const blockedUsers = defineTable({
   blockerId: v.id("users"), // User who is blocking
   blockedUserId: v.id("users"), // User who is being blocked
   blockedAt: v.optional(v.number()), // Timestamp when blocked (optional, defaults to _creationTime)
   reason: v.optional(v.string()), // Optional reason for blocking
 });
-
 export const notifications = defineTable({
   userId: v.id("users"), // User who receives the notification
   senderId: v.optional(v.id("users")), // User who triggered the notification (optional for system notifications)
@@ -245,7 +150,6 @@ export const notifications = defineTable({
   readAt: v.optional(v.number()),
   metadata: v.optional(v.any()), // Additional data specific to notification type
 });
-
 export const postViews = defineTable({
   userId: v.id("users"), // User who viewed the post
   postId: v.id("posts"), // The post that was viewed
@@ -280,14 +184,10 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_status", ["status"])
     .index("by_visibility", ["visibility"])
+    .index("by_status_visibility", ["status", "visibility"])
+    .index("by_tags_text", ["tagsText"])
     .index("by_likes", ["likesCount"]),
   comments: comments
-    .index("by_post", ["postId"])
-    .index("by_author", ["authorId"])
-    .index("by_status", ["status"])
-    .index("by_likes", ["likesCount"]),
-  replies: replies
-    .index("by_comment", ["commentId"])
     .index("by_post", ["postId"])
     .index("by_author", ["authorId"])
     .index("by_status", ["status"])
@@ -295,40 +195,20 @@ export default defineSchema({
   postLikes: postLikes
     .index("by_user", ["userId"])
     .index("by_post", ["postId"])
-    .index("by_user_post", ["userId", "postId"]), // Unique constraint: one like per user per post
+    .index("by_user_post", ["userId", "postId"]),
   commentLikes: commentLikes
     .index("by_user", ["userId"])
     .index("by_comment", ["commentId"])
     .index("by_post", ["postId"])
-    .index("by_user_comment", ["userId", "commentId"]), // Unique constraint: one like per user per comment
-  replyLikes: replyLikes
-    .index("by_user", ["userId"])
-    .index("by_reply", ["replyId"])
-    .index("by_comment", ["commentId"])
-    .index("by_post", ["postId"])
-    .index("by_user_reply", ["userId", "replyId"]), // Unique constraint: one like per user per reply
+    .index("by_user_comment", ["userId", "commentId"]),
   follows: follows
     .index("by_follower", ["followerId"])
     .index("by_following", ["followingId"])
-    .index("by_follower_following", ["followerId", "followingId"]), // Unique constraint: one follow relationship per pair
+    .index("by_follower_following", ["followerId", "followingId"]),
   blockedUsers: blockedUsers
     .index("by_blocker", ["blockerId"])
     .index("by_blocked_user", ["blockedUserId"])
-    .index("by_blocker_blocked", ["blockerId", "blockedUserId"]), // Unique constraint: one block relationship per pair
-  reportedUsers: reportedUsers
-    .index("by_reporter", ["reporterId"])
-    .index("by_reported_user", ["reportedUserId"])
-    .index("by_status", ["status"])
-    .index("by_reason", ["reason"])
-    .index("by_reviewer", ["reviewedBy"]),
-  reportedContents: reportedContents
-    .index("by_reporter", ["reporterId"])
-    .index("by_content", ["contentId"])
-    .index("by_content_author", ["contentAuthorId"])
-    .index("by_content_type", ["contentType"])
-    .index("by_status", ["status"])
-    .index("by_reason", ["reason"])
-    .index("by_reviewer", ["reviewedBy"]),
+    .index("by_blocker_blocked", ["blockerId", "blockedUserId"]),
   notifications: notifications
     .index("by_user", ["userId"])
     .index("by_sender", ["senderId"])
@@ -339,7 +219,7 @@ export default defineSchema({
   postViews: postViews
     .index("by_user", ["userId"])
     .index("by_post", ["postId"])
-    .index("by_user_post", ["userId", "postId"]) // Unique constraint: one view record per user per post
+    .index("by_user_post", ["userId", "postId"])
     .index("by_viewed_at", ["viewedAt"]),
 });
 
