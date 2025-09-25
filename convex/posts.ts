@@ -170,9 +170,6 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     // Strategy 1: If client explicitly wants viewed posts
     if (args.includeViewed === true) {
       filteredPosts = postsFromNonBlockedUsers; // Include both viewed and non-viewed
-      console.log(
-        `Client requested all posts including viewed: ${filteredPosts.length} posts`
-      );
     }
     // Strategy 2: Default behavior - prefer non-viewed, fallback to viewed
     else {
@@ -188,21 +185,14 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
             requestedCount - nonViewedPosts.length
           );
           filteredPosts = [...nonViewedPosts, ...additionalViewedPosts];
-          console.log(
-            `Supplementing ${nonViewedPosts.length} non-viewed posts with ${additionalViewedPosts.length} viewed posts`
-          );
         }
       } else if (viewedPosts.length > 0) {
         // Fall back to viewed posts if no non-viewed posts available
         filteredPosts = viewedPosts;
         fallbackToViewed = true;
-        console.log(
-          `No non-viewed posts available, returning ${viewedPosts.length} viewed posts as fallback`
-        );
       } else {
         // No posts available from non-blocked users
         filteredPosts = [];
-        console.log(`No posts available from non-blocked users`);
       }
     }
 
@@ -573,6 +563,8 @@ export const getPostById = rateLimitedOptionalAuthQuery({
         _id: ctx.user._id,
         userName: ctx.user.userName,
         imageUrl: ctx.user.imageUrl,
+        age: ctx.user.age,
+        gender: ctx.user.gender,
       };
     }
 

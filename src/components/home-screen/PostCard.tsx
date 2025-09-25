@@ -3,24 +3,21 @@ import { useUserStore } from "@/store/useUserStore";
 import { EnrichedPost } from "@/types";
 import { moderateContent } from "@/utils/moderateContent";
 import { useMutation } from "convex/react";
-import { formatDistanceToNowStrict } from "date-fns";
+import { format } from "date-fns";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import {
-  DeviceEventEmitter,
-  Modal,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
 import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { Easing } from "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { PRIMARY_COLOR } from "unistyles";
-import { BlockUserButton } from "../ui/BlockUserComponents";
+import { SECONDARY_COLOR, TERTIARY_COLOR } from "unistyles";
+import MenuOptionsModal from "../post-details/MenuOptionsModal";
+
+import { sharePost } from "@/utils/shareUtils";
+import { ConvexError } from "convex/values";
 import CustomText from "../ui/CustomText";
 import UserAvatar from "../ui/UserAvatar";
 
@@ -38,7 +35,7 @@ const ThemedMenuIcon = withUnistyles(
 );
 const ThemedLikeIcon = withUnistyles(IconsSolid.HeartIcon, (theme) => ({
   size: theme.gap(3),
-  color: theme.colors.primary,
+  color: theme.colors.secondary,
 }));
 const ThemedUnlikeIcon = withUnistyles(IconsOutline.HeartIcon, (theme) => ({
   size: theme.gap(3),
@@ -59,17 +56,20 @@ const ThemedViewIcon = withUnistyles(IconsSolid.EyeIcon, (theme) => ({
   size: theme.gap(3),
   color: theme.colors.grey500,
 }));
+const ThemedFireIcon = withUnistyles(IconsSolid.FireIcon, (theme) => ({
+  size: theme.gap(3),
+  color: theme.colors.secondary,
+}));
 
 const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
   const { currentUser } = useUserStore();
 
   const togglePostLike = useMutation(api.likes.togglePostLike);
-  const updatePost = useMutation(api.posts.updatePost);
-  const deletePost = useMutation(api.posts.deletePost);
 
   const [likes, setLikes] = useState(post.likesCount || 0);
   const [hasLiked, setHasLiked] = useState(post.hasLiked || false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isTrending, setIsTrending] = useState(false);
 
   const isMyPost =
     currentUser &&
@@ -92,12 +92,20 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
 
     try {
       await togglePostLike({ postId: post._id });
-    } catch {
-      Toast.show({
-        type: "error",
-        text1: "Failed to Like",
-        text2: "Please try again later",
-      });
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        Toast.show({
+          type: "error",
+          text1: "Failed to like/unlike post",
+          text2: error.data,
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to like/unlike post",
+          text2: "Something went wrong, please try again.",
+        });
+      }
     }
   };
 
@@ -128,12 +136,55 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
     }
   };
 
+  const handleSharePost = async () => {
+    try {
+      if (typeof sharePost !== "function") {
+        Toast.show({
+          type: "error",
+          text1: "Share Failed",
+          text2: "Share function not available",
+        });
+        return;
+      }
+
+      const result = await sharePost(
+        post._id,
+        post.title ? moderateContent(post.title) : undefined,
+        moderateContent(post.content),
+        post.author?.userName || "Anonymous"
+      );
+      console.log("Share result:", result);
+
+      if (result) {
+        Toast.show({
+          type: "success",
+          text1: "Shared Successfully",
+          text2: "Post has been shared",
+        });
+      }
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        Toast.show({
+          type: "error",
+          text1: "Failed to share post",
+          text2: error.data,
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to share post",
+          text2: "Something went wrong, please try again.",
+        });
+      }
+    }
+  };
+
   if (!post.author) return null;
 
   return (
     <>
       <TouchableOpacity
-        style={styles.card}
+        style={styles.card(isTrending)}
         onPress={handleView}
         activeOpacity={0.8}
       >
@@ -160,10 +211,22 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
             </CustomText>
           </View>
 
+          {isTrending && (
+            <View style={styles.trending}>
+              <ThemedFireIcon />
+              <CustomText variant="caption">Hot</CustomText>
+            </View>
+          )}
           {/* Menu Button */}
-          <TouchableOpacity onPress={handleMenuPress} hitSlop={10}>
-            <ThemedMenuIcon />
-          </TouchableOpacity>
+          {isMyPost && (
+            <TouchableOpacity
+              onPress={handleMenuPress}
+              hitSlop={10}
+              style={styles.menu}
+            >
+              <ThemedMenuIcon />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Title */}
@@ -186,21 +249,56 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
         >
           {moderateContent(post.content)}
         </CustomText>
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {post.tags.slice(0, 3).map((tag, index) => (
+              <View key={index} style={styles.tag}>
+                <CustomText
+                  variant="caption"
+                  semibold
+                  style={{ color: TERTIARY_COLOR }}
+                >
+                  #{tag}
+                </CustomText>
+              </View>
+            ))}
+            {post.tags.length > 3 && (
+              <View style={styles.tag}>
+                <CustomText variant="caption" semibold color="onSecondary">
+                  +{post.tags.length - 3}
+                </CustomText>
+              </View>
+            )}
+          </View>
+        )}
+
         <CustomText variant="caption" color="grey500" style={styles.timeText}>
-          {formatDistanceToNowStrict(post._creationTime)}
+          {format(new Date(post._creationTime), "MMM d, yyyy • h:mm a")}
           {post.editedAt && " • edited"}
         </CustomText>
         {/* Actions */}
         <View style={styles.actions}>
           {/* Like Button */}
-          <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              hasLiked && {
+                backgroundColor: SECONDARY_COLOR + "20",
+                paddingHorizontal: 5,
+                borderRadius: 3,
+              },
+            ]}
+            onPress={handleLike}
+          >
             {hasLiked ? <ThemedLikeIcon /> : <ThemedUnlikeIcon />}
             <AnimatedNumbers
               includeComma
               animateToNumber={likes || 0}
               fontStyle={[
                 styles.actionText,
-                hasLiked && { color: PRIMARY_COLOR },
+                hasLiked && { color: SECONDARY_COLOR },
               ]}
             />
           </TouchableOpacity>
@@ -233,151 +331,20 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
           {/* Share Button */}
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => undefined}
+            onPress={handleSharePost}
           >
             <ThemedShareIcon />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
-      <Modal
-        visible={showMenu}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowMenu(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          onPress={() => setShowMenu(false)}
-          activeOpacity={1}
-        >
-          <View style={styles.menuModal}>
-            <CustomText variant="subtitle1" bold textAlign="center">
-              Post Options
-            </CustomText>
-
-            {isMyPost ? (
-              <>
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={() => undefined}
-                >
-                  <IconsOutline.PencilIcon
-                    size={20}
-                    color="#4B50B2"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                    Edit Post
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={() => undefined}
-                >
-                  <IconsOutline.ShareIcon
-                    size={20}
-                    color="#4B50B2"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                    Share Post
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={() => undefined}
-                >
-                  <IconsOutline.EyeSlashIcon
-                    size={20}
-                    color="#FFA726"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextWarning]}>
-                    Hide from Feed
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={() => undefined}
-                >
-                  <IconsOutline.TrashIcon
-                    size={20}
-                    color="#FF6B6B"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextError]}>
-                    Delete Post
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                {/* Other User's Post Options */}
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={() => undefined}
-                >
-                  <IconsOutline.ShareIcon
-                    size={20}
-                    color="#4B50B2"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextPrimary]}>
-                    Share Post
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.menuOption}
-                  onPress={() => undefined}
-                >
-                  <IconsOutline.FlagIcon
-                    size={20}
-                    color="#FF6B6B"
-                    style={styles.menuIcon}
-                  />
-                  <Text style={[styles.menuText, styles.menuTextError]}>
-                    Report Post
-                  </Text>
-                </TouchableOpacity>
-
-                {post.author?._id && (
-                  <View style={[styles.menuOption, { paddingVertical: 8 }]}>
-                    <BlockUserButton
-                      userId={post.author._id as any}
-                      userName={post.author.userName}
-                      onBlockStatusChange={() => setShowMenu(false)}
-                      style={{
-                        backgroundColor: "transparent",
-                        borderWidth: 1,
-                        borderColor: "#FF6B6B",
-                        paddingVertical: 8,
-                        paddingHorizontal: 12,
-                      }}
-                      textStyle={{
-                        color: "#FF6B6B",
-                        fontSize: 14,
-                        fontWeight: "500",
-                      }}
-                    />
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* Cancel Button */}
-            <TouchableOpacity
-              style={styles.menuCancelButton}
-              onPress={() => setShowMenu(false)}
-            >
-              <Text style={styles.menuCancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* --- Post Options Modal --- */}
+      {isMyPost && (
+        <MenuOptionsModal
+          post={post}
+          onMenuRequestClose={() => setShowMenu(false)}
+          showMenu={showMenu}
+        />
+      )}
     </>
   );
 };
@@ -385,11 +352,13 @@ const PostCard = ({ post, showFullContent = false }: PostCardProps) => {
 export default PostCard;
 
 const styles = StyleSheet.create((theme) => ({
-  card: {
+  card: (isTrending) => ({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.small,
     padding: theme.paddingHorizontal,
-  },
+    borderWidth: isTrending ? 1 : 0,
+    borderColor: isTrending ? theme.colors.secondary : undefined,
+  }),
 
   header: {
     flexDirection: "row",
@@ -405,9 +374,19 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
   },
   timeText: {
-    marginTop: theme.gap(0.5),
+    marginVertical: theme.gap(1),
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: theme.gap(1),
+    gap: theme.gap(1),
   },
 
+  tag: {
+    borderRadius: theme.radii.small,
+    paddingHorizontal: theme.gap(0.5),
+  },
   actions: {
     flexDirection: "row",
     alignItems: "center",
@@ -429,67 +408,13 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: "500",
     color: theme.colors.grey500,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: theme.paddingHorizontal,
-  },
-  menuModal: {
-    backgroundColor: theme.colors.background,
-    padding: theme.paddingHorizontal,
-    borderRadius: theme.radii.regular,
-    width: "100%",
-  },
-  menuTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: theme.colors.onSurface,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-
-  // Menu options
-  menuOption: {
+  trending: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    backgroundColor: SECONDARY_COLOR + "20",
     paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: 30,
   },
-  menuIcon: {
-    marginRight: 12,
-  },
-  menuText: {
-    fontSize: 16,
-    flex: 1,
-  },
-  menuTextDefault: {
-    color: theme.colors.onSurface,
-  },
-  menuTextPrimary: {
-    color: theme.colors.primary,
-  },
-  menuTextWarning: {
-    color: theme.colors.warning || "#FFA726",
-  },
-  menuTextError: {
-    color: theme.colors.error || "#FF6B6B",
-  },
-
-  // Cancel button in menu
-  menuCancelButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: theme.colors.grey100,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  menuCancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.grey600,
-  },
+  menu: { marginLeft: 10 },
 }));

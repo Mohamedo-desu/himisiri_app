@@ -8,7 +8,7 @@ import { useUserStore } from "@/store/useUserStore";
 import { EnrichedPost } from "@/types";
 import { LegendListRef, LegendListRenderItemProps } from "@legendapp/list";
 import { AnimatedLegendList } from "@legendapp/list/animated";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import type {
   NativeScrollEvent,
@@ -24,7 +24,6 @@ const HomeScreen = () => {
   const scrollY = React.useContext(TabScrollYContext);
   const listRef = useRef<LegendListRef>(null);
   const { currentUser } = useUserStore();
-  const [includeViewedPosts, setIncludeViewedPosts] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [viewedPosts, setViewedPosts] = useState<Set<string>>(new Set());
   const [viewTimers, setViewTimers] = useState<Map<string, NodeJS.Timeout>>(
@@ -42,20 +41,6 @@ const HomeScreen = () => {
   );
 
   const markPostAsViewed = useMutation(api.postViews.markPostAsViewed);
-
-  const nonViewedPostsQuery = useQuery(
-    api.posts.hasNonViewedPosts,
-    currentUser ? {} : "skip"
-  );
-
-  // Auto-switch to include viewed posts if no non-viewed posts available
-  useEffect(() => {
-    if (currentUser && nonViewedPostsQuery) {
-      if (!nonViewedPostsQuery.hasNonViewedPosts && !includeViewedPosts) {
-        setIncludeViewedPosts(true);
-      }
-    }
-  }, [currentUser, nonViewedPostsQuery, includeViewedPosts]);
 
   // Handle viewport changes for posts
   const handleViewableItemsChanged = useCallback(

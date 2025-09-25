@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   rateLimitedAuthMutationAccount,
   rateLimitedAuthMutationLow,
@@ -470,13 +470,13 @@ export const reportContent = rateLimitedAuthMutationLow({
   handler: async (ctx, args) => {
     // Prevent self-reporting
     if (args.contentAuthorId === ctx.user._id) {
-      throw new Error("You cannot report your own content");
+      throw new ConvexError("❌ You cannot report your own content.");
     }
 
     // Verify the content author exists
     const contentAuthor = await ctx.db.get(args.contentAuthorId);
     if (!contentAuthor) {
-      throw new Error("Content author not found");
+      throw new ConvexError("⚠️ Content author not found.");
     }
 
     // Verify the content exists based on type
@@ -489,19 +489,19 @@ export const reportContent = rateLimitedAuthMutationLow({
       try {
         content = await ctx.db.get(args.contentId as any);
         if (!content || (content as any).status === "removed") {
-          throw new Error("Content not found or has been removed");
+          throw new ConvexError("⚠️ Content not found or has been removed.");
         }
       } catch (error) {
-        throw new Error("Content not found or has been removed");
+        throw new ConvexError("⚠️ Content not found or has been removed.");
       }
     } else if (args.contentType === "comment") {
       try {
         content = await ctx.db.get(args.contentId as any);
         if (!content || (content as any).status === "removed") {
-          throw new Error("Comment not found or has been removed");
+          throw new ConvexError("⚠️ Comment not found or has been removed");
         }
       } catch (error) {
-        throw new Error("Comment not found or has been removed");
+        throw new ConvexError("⚠️ Comment not found or has been removed");
       }
     }
 
@@ -513,12 +513,12 @@ export const reportContent = rateLimitedAuthMutationLow({
       .first();
 
     if (existingReport) {
-      throw new Error("You have already reported this content");
+      throw new ConvexError("⚠️ You have already reported this content.");
     }
 
     // Validate description length if provided
     if (args.description && args.description.length > 500) {
-      throw new Error("Description cannot exceed 500 characters");
+      throw new ConvexError("⚠️ Description cannot exceed 500 characters.");
     }
 
     // Create the content report

@@ -1,18 +1,20 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import React, { useState } from "react";
 import {
   Alert,
   Modal,
   ScrollView,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import * as IconsOutline from "react-native-heroicons/outline";
-import { StyleSheet } from "react-native-unistyles";
+import Toast from "react-native-toast-message";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import CustomText from "../ui/CustomText";
 
 type ReportReason =
   | "inappropriate_content"
@@ -38,11 +40,7 @@ interface ReportModalProps {
   contentAuthorName?: string;
 }
 
-const REPORT_REASONS: {
-  key: ReportReason;
-  label: string;
-  description: string;
-}[] = [
+const REPORT_REASONS = [
   {
     key: "inappropriate_content",
     label: "Inappropriate Content",
@@ -100,6 +98,11 @@ const REPORT_REASONS: {
   },
 ];
 
+const ThemedCloseIcon = withUnistyles(IconsOutline.XMarkIcon, (theme) => ({
+  size: theme.gap(3),
+  color: theme.colors.grey500,
+}));
+
 export const ReportModal: React.FC<ReportModalProps> = ({
   visible,
   onClose,
@@ -125,7 +128,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
     if (selectedReason === "other" && description.trim().length < 10) {
       Alert.alert(
         "Error",
-        "Please provide a detailed description for 'Other' reports (minimum 10 characters)."
+        "Please provide at least 10 characters for 'Other'."
       );
       return;
     }
@@ -142,19 +145,26 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
       Alert.alert(
         "Report Submitted",
-        "Thank you for your report. Our moderation team will review this content.",
+        "Thank you. Our moderation team will review this.",
         [{ text: "OK", onPress: handleClose }]
       );
     } catch (error) {
-      console.error("Error submitting report:", error);
-      Alert.alert(
-        "Error",
-        error instanceof Error
-          ? error.message
-          : "Failed to submit report. Please try again."
-      );
+      if (error instanceof ConvexError) {
+        Toast.show({
+          type: "error",
+          text1: "Failed to submit report.",
+          text2: error.data,
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to submit report.",
+          text2: "Something went wrong, please try again.",
+        });
+      }
     } finally {
       setIsSubmitting(false);
+      onClose();
     }
   };
 
@@ -168,36 +178,42 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   return (
     <Modal
       visible={visible}
-      transparent={true}
-      animationType="slide"
+      transparent
+      animationType="fade"
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Report {contentType}</Text>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <IconsOutline.XMarkIcon size={24} color="#616161" />
+            <CustomText variant="subtitle1" bold style={styles.title}>
+              Report {contentType}
+            </CustomText>
+            <TouchableOpacity onPress={handleClose} hitSlop={10}>
+              <ThemedCloseIcon />
             </TouchableOpacity>
           </View>
 
           {contentAuthorName && (
-            <Text style={styles.subtitle}>
+            <CustomText
+              variant="caption"
+              color="grey500"
+              style={styles.subtitle}
+            >
               Reporting content from @{contentAuthorName}
-            </Text>
+            </CustomText>
           )}
 
+          {/* Content */}
           <ScrollView
             style={styles.content}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
+            nestedScrollEnabled
           >
-            {/* Reason Selection */}
-            <Text style={styles.sectionTitle}>
+            <CustomText variant="body1" semibold style={styles.sectionTitle}>
               Why are you reporting this {contentType}?
-            </Text>
+            </CustomText>
 
             {REPORT_REASONS.map((reason) => (
               <TouchableOpacity
@@ -206,47 +222,51 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   styles.reasonOption,
                   selectedReason === reason.key && styles.reasonOptionSelected,
                 ]}
-                onPress={() => setSelectedReason(reason.key)}
+                onPress={() => setSelectedReason(reason.key as ReportReason)}
               >
-                <View style={styles.reasonContent}>
-                  <View style={styles.reasonHeader}>
-                    <Text
-                      style={[
-                        styles.reasonLabel,
-                        selectedReason === reason.key &&
-                          styles.reasonLabelSelected,
-                      ]}
-                    >
-                      {reason.label}
-                    </Text>
-                    <View
-                      style={[
-                        styles.radioButton,
-                        selectedReason === reason.key &&
-                          styles.radioButtonSelected,
-                      ]}
-                    >
-                      {selectedReason === reason.key && (
-                        <View style={styles.radioButtonInner} />
-                      )}
-                    </View>
+                <View style={styles.reasonHeader}>
+                  <CustomText
+                    variant="body2"
+                    semibold
+                    style={[
+                      styles.reasonLabel,
+                      selectedReason === reason.key &&
+                        styles.reasonLabelSelected,
+                    ]}
+                  >
+                    {reason.label}
+                  </CustomText>
+                  <View
+                    style={[
+                      styles.radioButton,
+                      selectedReason === reason.key &&
+                        styles.radioButtonSelected,
+                    ]}
+                  >
+                    {selectedReason === reason.key && (
+                      <View style={styles.radioButtonInner} />
+                    )}
                   </View>
-                  <Text style={styles.reasonDescription}>
-                    {reason.description}
-                  </Text>
                 </View>
+                <CustomText
+                  variant="caption"
+                  color="grey500"
+                  style={styles.reasonDescription}
+                >
+                  {reason.description}
+                </CustomText>
               </TouchableOpacity>
             ))}
 
             {/* Additional Description */}
             <View style={styles.descriptionSection}>
-              <Text style={styles.sectionTitle}>
+              <CustomText variant="body1" semibold style={styles.sectionTitle}>
                 Additional Details{" "}
                 {selectedReason === "other" ? "(Required)" : "(Optional)"}
-              </Text>
+              </CustomText>
               <TextInput
                 style={styles.descriptionInput}
-                placeholder="Provide additional context about this report..."
+                placeholder="Provide additional context..."
                 placeholderTextColor="#BDBDBD"
                 multiline
                 numberOfLines={4}
@@ -254,9 +274,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 onChangeText={setDescription}
                 maxLength={500}
               />
-              <Text style={styles.characterCount}>
+              <CustomText
+                variant="caption"
+                color="grey500"
+                style={styles.characterCount}
+              >
                 {description.length}/500
-              </Text>
+              </CustomText>
             </View>
           </ScrollView>
 
@@ -267,9 +291,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               onPress={handleClose}
               disabled={isSubmitting}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <CustomText semibold style={styles.cancelButtonText}>
+                Cancel
+              </CustomText>
             </TouchableOpacity>
-
             <TouchableOpacity
               style={[
                 styles.submitButton,
@@ -279,7 +304,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               onPress={handleSubmit}
               disabled={!selectedReason || isSubmitting}
             >
-              <Text
+              <CustomText
+                semibold
                 style={[
                   styles.submitButtonText,
                   (!selectedReason || isSubmitting) &&
@@ -287,7 +313,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 ]}
               >
                 {isSubmitting ? "Submitting..." : "Submit Report"}
-              </Text>
+              </CustomText>
             </TouchableOpacity>
           </View>
         </View>
@@ -299,86 +325,67 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 const styles = StyleSheet.create((theme) => ({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    padding: theme.gap(2),
   },
   modalContainer: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    marginHorizontal: 16,
-    width: "90%",
-    height: "80%",
+    borderRadius: theme.radii.large,
+    width: "100%",
+    maxWidth: 400,
+    height: "85%",
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-    display: "flex",
-    flexDirection: "column",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
+    justifyContent: "space-between",
+    padding: theme.gap(2),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.grey100,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "600",
     color: theme.colors.onSurface,
-    textTransform: "capitalize",
-  },
-  closeButton: {
-    padding: 4,
   },
   subtitle: {
-    fontSize: 14,
-    color: theme.colors.grey500,
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: theme.gap(2),
+    marginTop: theme.gap(1),
   },
-  content: {
-    flex: 1,
-  },
+  content: { flex: 1 },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: theme.gap(2),
+    paddingBottom: theme.gap(6),
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.onSurface || "#000000",
-    marginBottom: 16,
+    marginBottom: theme.gap(1),
   },
   reasonOption: {
     borderWidth: 1,
     borderColor: theme.colors.grey200,
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: theme.radii.regular,
+    padding: theme.gap(1.5),
+    marginBottom: theme.gap(1),
+    backgroundColor: theme.colors.background,
   },
   reasonOptionSelected: {
     borderColor: theme.colors.primary,
     backgroundColor: theme.colors.primary + "10",
   },
-  reasonContent: {
-    flex: 1,
-  },
   reasonHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: theme.gap(0.5),
   },
   reasonLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: theme.colors.onSurface || "#000000",
-    flex: 1,
+    color: theme.colors.onSurface,
   },
   reasonLabelSelected: {
     color: theme.colors.primary,
@@ -402,55 +409,46 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.primary,
   },
   reasonDescription: {
-    fontSize: 14,
-    color: theme.colors.grey500 || "#666666",
-    lineHeight: 18,
+    marginTop: theme.gap(0.5),
   },
   descriptionSection: {
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: theme.gap(2),
   },
   descriptionInput: {
     borderWidth: 1,
     borderColor: theme.colors.grey200,
-    borderRadius: 8,
-    padding: 12,
-    color: theme.colors.onSurface,
+    borderRadius: theme.radii.regular,
+    padding: theme.gap(1.5),
+    minHeight: 100,
     fontSize: 16,
     textAlignVertical: "top",
-    minHeight: 100,
+    color: theme.colors.onSurface,
   },
   characterCount: {
-    fontSize: 12,
-    color: theme.colors.grey500,
     textAlign: "right",
-    marginTop: 4,
+    marginTop: theme.gap(0.5),
   },
   footer: {
     flexDirection: "row",
-    padding: 20,
-    gap: 12,
+    padding: theme.gap(2),
+    gap: theme.gap(1),
     borderTopWidth: 1,
     borderTopColor: theme.colors.grey100,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: theme.gap(1.5),
+    borderRadius: theme.radii.regular,
     backgroundColor: theme.colors.grey100,
     alignItems: "center",
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.grey600,
+    color: theme.colors.grey700,
   },
   submitButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: theme.gap(1.5),
+    borderRadius: theme.radii.regular,
     backgroundColor: theme.colors.primary,
     alignItems: "center",
   },
@@ -458,8 +456,6 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.grey300,
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
     color: theme.colors.onPrimary,
   },
   submitButtonTextDisabled: {

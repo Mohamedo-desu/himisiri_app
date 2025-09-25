@@ -26,18 +26,12 @@ export const useUserPresence = () => {
    */
   const updateStatus = useCallback(
     async (status: "online" | "offline") => {
-      console.log(
-        `🔄 updateStatus called: ${status}, isSignedIn: ${isSignedIn}`
-      );
-
       if (!isSignedIn) {
-        console.log(`❌ Not signed in, skipping status update`);
         return;
       }
 
       try {
         const result = await updateUserStatus({ status });
-        console.log(`✅ Status updated:`, result);
 
         setIsOnline(result?.isOnline || false);
       } catch (error) {
@@ -52,19 +46,14 @@ export const useUserPresence = () => {
    */
   const handleAppStateChange = useCallback(
     async (nextAppState: AppStateStatus) => {
-      console.log(
-        `📱 App state: ${previousAppState.current} → ${nextAppState}`
-      );
       setAppState(nextAppState);
 
       if (!isSignedIn) {
-        console.log(`❌ Not signed in, skipping app state change`);
         return;
       }
 
       // App coming to foreground
       if (previousAppState.current !== "active" && nextAppState === "active") {
-        console.log(`🟢 App active - going online`);
         await updateStatus("online");
       }
       // App going to background or inactive
@@ -72,7 +61,6 @@ export const useUserPresence = () => {
         previousAppState.current === "active" &&
         (nextAppState === "background" || nextAppState === "inactive")
       ) {
-        console.log(`🟡 App backgrounded - going offline`);
         await updateStatus("offline");
       }
 
@@ -87,9 +75,6 @@ export const useUserPresence = () => {
   useEffect(() => {
     const handleAuthChange = async () => {
       const currentlySignedIn = !!isSignedIn;
-      console.log(
-        `🔐 Auth change: ${previousAuthState.current} → ${currentlySignedIn}, appState: ${appState}`
-      );
 
       // User just logged in
       if (
@@ -97,12 +82,10 @@ export const useUserPresence = () => {
         currentlySignedIn &&
         appState === "active"
       ) {
-        console.log(`🟢 User logged in - going online`);
         await updateStatus("online");
       }
       // User just logged out
       else if (previousAuthState.current && !currentlySignedIn) {
-        console.log(`🔴 User logged out - going offline`);
         await updateStatus("offline");
         setIsOnline(false);
       }
@@ -128,11 +111,7 @@ export const useUserPresence = () => {
    * Initialize status on mount
    */
   useEffect(() => {
-    console.log(
-      `🚀 Initialize: isSignedIn: ${isSignedIn}, appState: ${appState}`
-    );
     if (isSignedIn && appState === "active") {
-      console.log(`🟢 Initial setup - going online`);
       updateStatus("online");
     }
   }, [isSignedIn, appState, updateStatus]);
@@ -143,7 +122,6 @@ export const useUserPresence = () => {
   useEffect(() => {
     return () => {
       if (isSignedIn) {
-        console.log(`🔴 Component unmounting - going offline`);
         updateUserStatus({ status: "offline" }).catch(console.error);
       }
     };

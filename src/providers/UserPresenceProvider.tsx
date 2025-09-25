@@ -19,11 +19,6 @@ export const UserPresenceProvider: React.FC<UserPresenceProviderProps> = ({
   const { isSignedIn } = useAuth();
   const presenceHook = useUserPresence();
 
-  console.log(
-    `🔍 UserPresenceProvider render - isSignedIn: ${isSignedIn}, presenceHook:`,
-    presenceHook
-  );
-
   // Safely destructure with fallbacks
   const { isOnline = false, recordActivity = () => {} } = presenceHook || {};
 

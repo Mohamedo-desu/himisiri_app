@@ -2,11 +2,10 @@ import LoginPrompt from "@/components/auth/LoginPrompt";
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import { Stack } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { DeviceEventEmitter } from "react-native";
 
 const InitialLayout = () => {
-  // Set up push notification registration (permissions, token, listeners, etc.)
   useSetupForPushNotifications();
 
   const {
@@ -18,13 +17,13 @@ const InitialLayout = () => {
   } = useLoginPrompt(10);
 
   // Listen for events to control login prompt
-  const handleResetPrompt = () => {
+  const handleResetPrompt = useCallback(() => {
     resetPromptState();
-  };
+  }, [resetPromptState]);
 
-  const handleShowPrompt = () => {
+  const handleShowPrompt = useCallback(() => {
     setShowLoginPrompt(true);
-  };
+  }, [setShowLoginPrompt]);
 
   useEffect(() => {
     const resetSubscription = DeviceEventEmitter.addListener(
@@ -46,7 +45,7 @@ const InitialLayout = () => {
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(main)" />
+        <Stack.Screen name="(drawer)" />
       </Stack>
       {/* Login Prompt Modal */}
       <LoginPrompt

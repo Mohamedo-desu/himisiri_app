@@ -77,6 +77,7 @@ type ColorVariant =
   | "primary"
   | "onPrimary"
   | "secondary"
+  | "tertiary"
   | "onSecondary"
   | "background"
   | "onBackground"
@@ -207,6 +208,7 @@ const getThemeColorStyle = (colorVariant: ColorVariant, styles: any) => {
     "primary",
     "onPrimary",
     "secondary",
+    "tertiary",
     "onSecondary",
     "background",
     "onBackground",
@@ -365,6 +367,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   secondary: {
     color: theme.colors.secondary,
+  },
+  tertiary: {
+    color: theme.colors.tertiary,
   },
   onSecondary: {
     color: theme.colors.onSecondary,

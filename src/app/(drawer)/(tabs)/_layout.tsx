@@ -1,14 +1,18 @@
 import CustomTabBar from "@/components/tabs/CustomTabBar";
+import CustomText from "@/components/ui/CustomText";
 import { api } from "@/convex/_generated/api";
 import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
+import { DrawerActions } from "@react-navigation/native";
 import { APP_NAME } from "constants/device";
 import { useQuery } from "convex/react";
-import { Tabs } from "expo-router";
+import { Tabs, useNavigation } from "expo-router";
 import React, { createContext } from "react";
+import { useTranslation } from "react-i18next";
+import { TouchableOpacity, View } from "react-native";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { useSharedValue } from "react-native-reanimated";
-import { useUnistyles } from "react-native-unistyles";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { BADGE_COLOR, PRIMARY_COLOR } from "unistyles";
 
 // Define NavItem type for auto-suggestions
@@ -36,6 +40,10 @@ const TabsLayout = () => {
   // Get notification count for badge
   const notificationCount = useQuery(api.notifications.getUnreadCount);
 
+  const { t } = useTranslation();
+
+  const navigation = useNavigation();
+
   const NAV_ITEMS: NavItem[] = [
     {
       name: "index",
@@ -46,20 +54,12 @@ const TabsLayout = () => {
       headerTitle: APP_NAME,
     },
     {
-      name: "explore",
-      label: "Explore",
-      solid: IconsSolid.Squares2X2Icon,
+      name: "search",
+      label: "Search",
+      solid: IconsSolid.MagnifyingGlassIcon,
       outline: IconsOutline.MagnifyingGlassIcon,
       headerShown: true,
       headerTitle: "Explore",
-    },
-    {
-      name: "create",
-      label: "Post",
-      solid: IconsSolid.PlusCircleIcon,
-      outline: IconsOutline.PlusCircleIcon,
-      headerShown: true,
-      headerTitle: "Create Post",
     },
     {
       name: "notifications",
@@ -97,6 +97,9 @@ const TabsLayout = () => {
     tabBarActiveTintColor: theme.colors.onPrimary,
     tabBarInactiveTintColor: theme.colors.grey700,
   };
+  const toggleDrawer = () => {
+    navigation.dispatch(DrawerActions.toggleDrawer());
+  };
 
   return (
     <TabScrollYContext.Provider value={scrollY}>
@@ -121,9 +124,60 @@ const TabsLayout = () => {
                 tabBarLabel: label,
                 headerShown: headerShown,
                 headerTitle: headerTitle,
-                tabBarIcon: ({ size, color }) => (
-                  <SolidIcon size={size} color={color} />
-                ),
+                ...(name === "index" && {
+                  headerLeft: () => (
+                    <TouchableOpacity
+                      style={styles.headerLeftContainer}
+                      activeOpacity={0.8}
+                      onPress={toggleDrawer}
+                    >
+                      <IconsOutline.Bars3Icon color={"white"} size={22} />
+                    </TouchableOpacity>
+                  ),
+                  headerRight: () => (
+                    <TouchableOpacity
+                      style={styles.headerRightContainer}
+                      activeOpacity={0.8}
+                      onPress={toggleDrawer}
+                    >
+                      <IconsOutline.PlusIcon color={"white"} size={22} />
+                    </TouchableOpacity>
+                  ),
+                  headerTitle: (props) => {
+                    const { tintColor, allowFontScaling, style } = props;
+                    return (
+                      <View>
+                        <CustomText
+                          variant="subtitle2"
+                          bold
+                          textAlign="center"
+                          color={tintColor}
+                          allowFontScaling={allowFontScaling}
+                          style={style as any}
+                        >
+                          {t("common.appName")}
+                        </CustomText>
+
+                        <CustomText
+                          variant="small"
+                          italic
+                          textAlign="center"
+                          color={tintColor}
+                          allowFontScaling={allowFontScaling}
+                        >
+                          {t("common.tagLine")}
+                        </CustomText>
+                      </View>
+                    );
+                  },
+                }),
+
+                tabBarIcon: ({ focused, size, color }) =>
+                  focused ? (
+                    <SolidIcon size={size} color={color} />
+                  ) : (
+                    <OutlineIcon size={size} color={color} />
+                  ),
                 ...(badge !== undefined && { tabBarBadge: badge }),
               }}
             />
@@ -135,3 +189,12 @@ const TabsLayout = () => {
 };
 
 export default TabsLayout;
+
+const styles = StyleSheet.create((theme) => ({
+  headerLeftContainer: {
+    marginLeft: 12,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerRightContainer: { marginRight: 12 },
+}));

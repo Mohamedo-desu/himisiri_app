@@ -7,6 +7,7 @@ import {
   rateLimitedAuthMutationMedium,
   rateLimitedOptionalAuthQuery,
 } from "./rateLimitedFunctions";
+import { USER_TABLE } from "./schema";
 import { getAuthenticatedUser } from "./users";
 
 /**
@@ -70,11 +71,13 @@ export const getPaginatedComments = rateLimitedOptionalAuthQuery({
         if (!comment.isAnonymous || comment.authorId === ctx.user?._id) {
           const authorDoc = await ctx.db.get(comment.authorId);
           if (authorDoc) {
-            const userDoc = authorDoc as any;
+            const userDoc = authorDoc as USER_TABLE;
             author = {
               _id: userDoc._id,
               userName: userDoc.userName,
               imageUrl: userDoc.imageUrl,
+              age: userDoc.age,
+              gender: userDoc.gender,
             };
           }
         }

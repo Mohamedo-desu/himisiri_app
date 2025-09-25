@@ -9,16 +9,18 @@ const UserAvatar = ({
   imageUrl,
   size,
   userId,
+  indicatorSize,
 }: {
   imageUrl: string;
   size: number;
   userId: Id<"users">;
+  indicatorSize: "medium" | "small" | "large" | undefined;
 }) => {
   return (
     <View style={{ width: size, height: size }}>
       <SvgXml xml={imageUrl} width={size} height={size} />
       <View style={styles.indicatorWrapper}>
-        <OnlineStatusIndicator userId={userId} />
+        <OnlineStatusIndicator userId={userId} size={indicatorSize} />
       </View>
     </View>
   );
