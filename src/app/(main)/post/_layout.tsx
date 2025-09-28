@@ -17,7 +17,7 @@ const PostLayout = () => {
       <Stack.Screen
         name="[id]"
         options={{
-          headerTitle: "Post Details",
+          headerTitle: "",
           headerLeft: () => (
             <TouchableOpacity
               style={styles.headerLeftContainer}
@@ -37,7 +37,7 @@ export default PostLayout;
 
 const styles = StyleSheet.create((theme) => ({
   headerLeftContainer: {
-    marginLeft: 12,
+    marginLeft: 0,
     flexDirection: "row",
     alignItems: "center",
   },

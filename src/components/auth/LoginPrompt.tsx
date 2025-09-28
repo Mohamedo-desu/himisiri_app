@@ -1,6 +1,6 @@
+import { APP_NAME, TAGLINE } from "@/constants/device";
 import { useSSO } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { APP_NAME, TAGLINE } from "constants/device";
 import * as Linking from "expo-linking";
 import React, { useState } from "react";
 import {
@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { PRIMARY_COLOR } from "unistyles";
+import { BADGE_COLOR, PRIMARY_COLOR } from "unistyles";
 import CustomText from "../ui/CustomText";
 
 interface LoginPromptProps {
@@ -70,10 +70,10 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Ionicons name="close" size={10} color={PRIMARY_COLOR} />
+              <Ionicons name="close" size={10} color={BADGE_COLOR} />
             </TouchableOpacity>
             <CustomText
-              variant="h3"
+              variant="subtitle1"
               semibold
               textAlign="center"
               color="onPrimary"
@@ -82,7 +82,7 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
             </CustomText>
 
             <CustomText
-              variant="caption"
+              variant="small"
               color="grey700"
               textAlign="center"
               style={{ marginTop: 8, marginBottom: 28 }}
@@ -98,7 +98,7 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={PRIMARY_COLOR} />
               ) : (
                 <View style={styles.row}>
                   <Ionicons
@@ -107,7 +107,7 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
                     color={PRIMARY_COLOR}
                   />
                   <CustomText
-                    variant="button"
+                    variant="label"
                     bold
                     color="primary"
                     style={{ marginLeft: 8 }}
@@ -122,7 +122,7 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
             <View style={styles.divider}>
               <View style={styles.line} />
               <CustomText
-                variant="caption"
+                variant="small"
                 color="grey700"
                 style={{ marginHorizontal: 8 }}
               >
@@ -140,14 +140,14 @@ const LoginPrompt: React.FC<ExtendedLoginPromptProps> = ({
               }}
               activeOpacity={0.7}
             >
-              <CustomText variant="body2" semibold color="secondary">
+              <CustomText variant="label" semibold color="secondary">
                 Continue as Guest
               </CustomText>
             </TouchableOpacity>
 
             {/* Footer message */}
             <CustomText
-              variant="caption"
+              variant="small"
               color="grey700"
               textAlign="center"
               italic
@@ -211,7 +211,7 @@ const styles = StyleSheet.create((theme) => ({
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: theme.colors.grey300,
+    backgroundColor: theme.colors.grey500,
   },
   skipButton: {
     borderRadius: theme.radii.small,

@@ -1,4 +1,4 @@
-import { Fonts } from "constants/Fonts";
+import { Fonts } from "@/constants/Fonts";
 import React, { FC } from "react";
 import { Platform, Text, TextProps, TextStyle } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -263,6 +263,92 @@ const CustomText: FC<CustomTextProps> = ({
   children,
   ...props
 }) => {
+  // Create styles inside component to ensure theme is available
+  const styles = StyleSheet.create((theme) => ({
+    text: {
+      color: theme.colors.onBackground,
+    },
+    // Theme color variants
+    primary: {
+      color: theme.colors.primary,
+    },
+    onPrimary: {
+      color: theme.colors.onPrimary,
+    },
+    secondary: {
+      color: theme.colors.secondary,
+    },
+    tertiary: {
+      color: theme.colors.tertiary,
+    },
+    onSecondary: {
+      color: theme.colors.onSecondary,
+    },
+    background: {
+      color: theme.colors.background,
+    },
+    onBackground: {
+      color: theme.colors.onBackground,
+    },
+    surface: {
+      color: theme.colors.surface,
+    },
+    onSurface: {
+      color: theme.colors.onSurface,
+    },
+    error: {
+      color: theme.colors.error,
+    },
+    onError: {
+      color: theme.colors.onError,
+    },
+    success: {
+      color: theme.colors.success,
+    },
+    onSuccess: {
+      color: theme.colors.onSuccess,
+    },
+    warning: {
+      color: theme.colors.warning,
+    },
+    onWarning: {
+      color: theme.colors.onWarning,
+    },
+    info: {
+      color: theme.colors.info,
+    },
+    onInfo: {
+      color: theme.colors.onInfo,
+    },
+    // Grey scale variants
+    grey100: {
+      color: theme.colors.grey100,
+    },
+    grey200: {
+      color: theme.colors.grey200,
+    },
+    grey300: {
+      color: theme.colors.grey300,
+    },
+    grey400: {
+      color: theme.colors.grey400,
+    },
+    grey500: {
+      color: theme.colors.grey500,
+    },
+    grey600: {
+      color: theme.colors.grey600,
+    },
+    grey700: {
+      color: theme.colors.grey700,
+    },
+    grey800: {
+      color: theme.colors.grey800,
+    },
+    grey900: {
+      color: theme.colors.grey900,
+    },
+  }));
   // Determine font size
   let computedFontSize: number = fontSize || 14;
   if (!fontSize && variant && fontSizeMap[variant]) {
@@ -353,89 +439,3 @@ export default CustomText;
 
 // Export types for external use
 export type { ColorVariant, CustomTextProps, Variant };
-
-const styles = StyleSheet.create((theme) => ({
-  text: {
-    color: theme.colors.onBackground,
-  },
-  // Theme color variants
-  primary: {
-    color: theme.colors.primary,
-  },
-  onPrimary: {
-    color: theme.colors.onPrimary,
-  },
-  secondary: {
-    color: theme.colors.secondary,
-  },
-  tertiary: {
-    color: theme.colors.tertiary,
-  },
-  onSecondary: {
-    color: theme.colors.onSecondary,
-  },
-  background: {
-    color: theme.colors.background,
-  },
-  onBackground: {
-    color: theme.colors.onBackground,
-  },
-  surface: {
-    color: theme.colors.surface,
-  },
-  onSurface: {
-    color: theme.colors.onSurface,
-  },
-  error: {
-    color: theme.colors.error,
-  },
-  onError: {
-    color: theme.colors.onError,
-  },
-  success: {
-    color: theme.colors.success,
-  },
-  onSuccess: {
-    color: theme.colors.onSuccess,
-  },
-  warning: {
-    color: theme.colors.warning,
-  },
-  onWarning: {
-    color: theme.colors.onWarning,
-  },
-  info: {
-    color: theme.colors.info,
-  },
-  onInfo: {
-    color: theme.colors.onInfo,
-  },
-  // Grey scale variants
-  grey100: {
-    color: theme.colors.grey100,
-  },
-  grey200: {
-    color: theme.colors.grey200,
-  },
-  grey300: {
-    color: theme.colors.grey300,
-  },
-  grey400: {
-    color: theme.colors.grey400,
-  },
-  grey500: {
-    color: theme.colors.grey500,
-  },
-  grey600: {
-    color: theme.colors.grey600,
-  },
-  grey700: {
-    color: theme.colors.grey700,
-  },
-  grey800: {
-    color: theme.colors.grey800,
-  },
-  grey900: {
-    color: theme.colors.grey900,
-  },
-}));

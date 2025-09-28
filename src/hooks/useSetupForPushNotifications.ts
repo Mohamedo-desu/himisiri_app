@@ -1,7 +1,7 @@
+import { APP_NAME } from "@/constants/device";
+import { NOTIFICATION_CHANNEL_ID } from "@/constants/notifications";
 import { PushTokenService } from "@/services/pushTokenService";
 import { PushTokenManager } from "@/utils/pushTokenManager";
-import { APP_NAME } from "constants/device";
-import { NOTIFICATION_CHANNEL_ID } from "constants/notifications";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";

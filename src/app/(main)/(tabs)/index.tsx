@@ -4,11 +4,11 @@ import PostCard from "@/components/home-screen/PostCard";
 import ScrollToTopFab from "@/components/home-screen/ScrollToTopFab";
 import { TAB_BAR_HEIGHT } from "@/components/tabs/CustomTabBar";
 import { api } from "@/convex/_generated/api";
+import { Doc } from "@/convex/_generated/dataModel";
 import { useUserStore } from "@/store/useUserStore";
-import { EnrichedPost } from "@/types";
 import { LegendListRef, LegendListRenderItemProps } from "@legendapp/list";
 import { AnimatedLegendList } from "@legendapp/list/animated";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import type {
   NativeScrollEvent,
@@ -20,15 +20,27 @@ import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
 import { TabScrollYContext } from "./_layout";
 
+// Type for enriched post data from getPaginatedPosts
+type EnrichedPost = Doc<"posts"> & {
+  author?: {
+    _id: string;
+    userName: string;
+    imageUrl?: string;
+  } | null;
+  hasLiked: boolean;
+};
+
 const HomeScreen = () => {
   const scrollY = React.useContext(TabScrollYContext);
   const listRef = useRef<LegendListRef>(null);
   const { currentUser } = useUserStore();
+
   const [refreshing, setRefreshing] = useState(false);
   const [viewedPosts, setViewedPosts] = useState<Set<string>>(new Set());
   const [viewTimers, setViewTimers] = useState<Map<string, NodeJS.Timeout>>(
     new Map()
   );
+  const [includeViewedPosts, setIncludeViewedPosts] = useState(false);
 
   const [processingViews, setProcessingViews] = useState<Set<string>>(
     new Set()
@@ -36,16 +48,32 @@ const HomeScreen = () => {
 
   const { results, status, isLoading, loadMore } = usePaginatedQuery(
     api.posts.getPaginatedPosts,
-    { includeViewed: true },
+    { includeViewed: includeViewedPosts },
     { initialNumItems: 10 }
   );
 
   const markPostAsViewed = useMutation(api.postViews.markPostAsViewed);
 
+  // Check if non-viewed posts are available (only if authenticated)
+  const nonViewedPostsQuery = useQuery(
+    api.posts.hasNonViewedPosts,
+    currentUser ? {} : "skip"
+  );
+
+  // Auto-switch to include viewed posts if no non-viewed posts available
+  useEffect(() => {
+    if (currentUser && nonViewedPostsQuery) {
+      if (!nonViewedPostsQuery.hasNonViewedPosts && !includeViewedPosts) {
+        setIncludeViewedPosts(true);
+      }
+    }
+  }, [currentUser, nonViewedPostsQuery, includeViewedPosts]);
+
   // Handle viewport changes for posts
   const handleViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (!currentUser) {
+        console.log("No current user, skipping view tracking");
         return;
       }
 
@@ -103,6 +131,10 @@ const HomeScreen = () => {
               // Mark as viewed locally to prevent re-tracking
               setViewedPosts((prev) => new Set(prev).add(postId));
             } else {
+              console.log(
+                `Post view tracking failed or skipped: ${postId}`,
+                result
+              );
             }
           } catch (error) {
             console.error(`Failed to mark post ${postId} as viewed:`, error);
@@ -139,6 +171,8 @@ const HomeScreen = () => {
             // Keep timer for still-viewable items
             newTimers.set(postId, timer);
           } else {
+            // Clear timer for no-longer-viewable items
+
             clearTimeout(timer);
 
             // Also remove from processing state
@@ -157,13 +191,15 @@ const HomeScreen = () => {
 
   // Configuration for viewport detection
   const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
+    itemVisiblePercentThreshold: 50, // 50% of the item must be visible
     waitForInteraction: false,
-    minimumViewTime: 250,
+    minimumViewTime: 250, // Minimum time to be considered viewable (React Native internal)
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+
+    // Clear view tracking state on refresh to allow re-tracking
 
     viewTimers.forEach((timer) => clearTimeout(timer));
     setViewTimers(new Map());
@@ -199,6 +235,7 @@ const HomeScreen = () => {
     };
   }, []);
 
+  // Clean up timers when user changes (login/logout)
   useEffect(() => {
     if (!currentUser) {
       viewTimers.forEach((timer) => clearTimeout(timer));
@@ -241,8 +278,6 @@ const HomeScreen = () => {
         ListFooterComponent={
           <ListFooterComponent status={status} results={results} />
         }
-        bounces={false}
-        directionalLockEnabled
       />
 
       <ScrollToTopFab onPress={scrollToTop} scrollY={scrollY} />
@@ -264,5 +299,49 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: theme.paddingHorizontal,
     paddingBottom: rt.insets.bottom + TAB_BAR_HEIGHT + 25,
     paddingTop: theme.gap(2),
+  },
+
+  listEmptyComponent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: theme.gap(2),
+  },
+
+  strategyIndicator: {
+    backgroundColor: theme.colors.surface,
+    padding: theme.gap(2),
+    marginHorizontal: theme.paddingHorizontal,
+    marginTop: theme.gap(1),
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+  },
+
+  strategyText: {
+    fontSize: 12,
+    color: theme.colors.grey600,
+    marginBottom: theme.gap(1),
+  },
+
+  debugText: {
+    fontSize: 10,
+    color: theme.colors.grey500,
+    fontFamily: "monospace",
+    marginBottom: theme.gap(1),
+  },
+
+  switchButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.gap(2),
+    paddingVertical: theme.gap(1),
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
+
+  switchButtonText: {
+    color: theme.colors.onPrimary,
+    fontSize: 12,
+    fontWeight: "600",
   },
 }));

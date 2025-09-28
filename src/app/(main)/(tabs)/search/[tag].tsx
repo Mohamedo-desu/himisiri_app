@@ -1,3 +1,5 @@
+import ListEmptyComponent from "@/components/home-screen/ListEmptyComponent";
+import ListFooterComponent from "@/components/home-screen/ListFooterComponent";
 import PostCard from "@/components/home-screen/PostCard";
 import CustomText from "@/components/ui/CustomText";
 import { api } from "@/convex/_generated/api";
@@ -133,7 +135,7 @@ const Results = ({
   onClearRecents: () => void;
   onSelectRecent: (tag: string) => void;
 }) => {
-  const { results, loadMore, status } = usePaginatedQuery(
+  const { results, loadMore, status, isLoading } = usePaginatedQuery(
     api.posts.searchByTag,
     { tag: query },
     { initialNumItems: 10 }
@@ -178,64 +180,6 @@ const Results = ({
     );
   }
 
-  if (status === "LoadingFirstPage") {
-    return (
-      <View style={{ padding: 16 }}>
-        <CustomText variant="body2" color="grey500">
-          Searching for "{query}"...
-        </CustomText>
-      </View>
-    );
-  }
-
-  if (results.length === 0) {
-    // Empty results → show recents
-    return (
-      <>
-        <View style={{ padding: 0 }}>
-          {recentSearches.length > 0 && (
-            <View style={{ paddingHorizontal: 15, paddingVertical: 5 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
-                <CustomText variant="subtitle2">Recent searches</CustomText>
-                <TouchableOpacity onPress={onClearRecents}>
-                  <CustomText variant="body2" color="primary">
-                    Clear all
-                  </CustomText>
-                </TouchableOpacity>
-              </View>
-              {recentSearches.map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  style={{ paddingVertical: 8 }}
-                  onPress={() => onSelectRecent(tag)}
-                >
-                  <CustomText variant="body2">{tag}</CustomText>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-        <View
-          style={{
-            flex: 1,
-            paddingVertical: 50,
-            alignItems: "center",
-          }}
-        >
-          <CustomText variant="body2" color="grey500">
-            No results for "{query}"
-          </CustomText>
-        </View>
-      </>
-    );
-  }
-
   return (
     <AnimatedLegendList
       data={results}
@@ -243,7 +187,29 @@ const Results = ({
       renderItem={renderItem as any}
       contentContainerStyle={{ padding: 16, gap: 8 }}
       onEndReached={() => loadMore(10)}
-      onEndReachedThreshold={0.2}
+      onEndReachedThreshold={0.1}
+      ListEmptyComponent={
+        <ListEmptyComponent
+          isLoading={isLoading}
+          results={results as EnrichedPost[]}
+          customMessage={
+            results.length === 0 && !isLoading
+              ? `No results for "${query}"`
+              : undefined
+          }
+          customSubMessage={
+            results.length === 0 && !isLoading
+              ? "Try searching for a different tag"
+              : undefined
+          }
+        />
+      }
+      ListFooterComponent={
+        <ListFooterComponent
+          status={status}
+          results={results as EnrichedPost[]}
+        />
+      }
     />
   );
 };

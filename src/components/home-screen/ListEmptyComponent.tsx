@@ -1,7 +1,6 @@
 import CustomText from "@/components/ui/CustomText";
 import { EnrichedPost } from "@/types";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import { ActivityIndicator, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
@@ -9,12 +8,14 @@ import { PRIMARY_COLOR } from "unistyles";
 const ListEmptyComponent = ({
   isLoading,
   results,
+  customMessage,
+  customSubMessage,
 }: {
   isLoading: boolean;
   results: EnrichedPost[];
+  customMessage?: string;
+  customSubMessage?: string;
 }) => {
-  const { t } = useTranslation();
-
   return isLoading ? (
     <View style={styles.listEmptyComponent}>
       <ActivityIndicator size="small" color={PRIMARY_COLOR} />
@@ -25,10 +26,10 @@ const ListEmptyComponent = ({
   ) : results.length === 0 ? (
     <View style={styles.listEmptyComponent}>
       <CustomText variant="body1" color="grey500">
-        {t("homeScreen.noResults")}
+        {customMessage || "No results found."}
       </CustomText>
       <CustomText variant="caption" color="grey400" style={{ marginTop: 5 }}>
-        Be the first to share something!
+        {customSubMessage || "Be the first to share something!"}
       </CustomText>
     </View>
   ) : null;

@@ -1,4 +1,4 @@
-import { HATE_WORDS } from "constants/moderation";
+import { HATE_WORDS } from "@/constants/moderation";
 
 export const moderateContent = (text: string) => {
   try {

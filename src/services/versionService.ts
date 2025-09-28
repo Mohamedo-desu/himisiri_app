@@ -1,4 +1,4 @@
-import { BACKEND_URL } from "constants/device";
+import { BACKEND_URL } from "@/constants/device";
 
 interface VersionInfo {
   _id: string;

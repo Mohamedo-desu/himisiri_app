@@ -152,7 +152,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     experiments: {
       reactCanary: false,
-      reactCompiler: false,
+      reactCompiler: true,
       typedRoutes: true,
     },
     owner: OWNER,

@@ -1,4 +1,4 @@
-import { Fonts } from "constants/Fonts";
+import { Fonts } from "@/constants/Fonts";
 import { StyleSheet } from "react-native-unistyles";
 
 // Base spacing unit
@@ -126,7 +126,7 @@ declare module "react-native-unistyles" {
 }
 
 StyleSheet.configure({
-  settings: { adaptiveThemes: true },
+  settings: { initialTheme: "dark" },
   themes: appThemes,
   breakpoints,
 });

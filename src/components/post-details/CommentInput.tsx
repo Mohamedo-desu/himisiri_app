@@ -12,8 +12,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { PaperAirplaneIcon } from "react-native-heroicons/outline";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
+
+// Themed send icon
+const ThemedSendIcon = withUnistyles(PaperAirplaneIcon, (theme) => ({
+  size: 18,
+  color: theme.colors.onPrimary,
+}));
 
 type CommentInputProps = {
   postId: Id<"posts">;
@@ -24,11 +31,13 @@ type CommentInputProps = {
 const CommentInput = ({
   postId,
   onCommentPosted,
-  placeholder = "Write a comment...",
+  placeholder = "Share your thoughts...",
 }: CommentInputProps) => {
   const { currentUser } = useUserStore();
   const [comment, setComment] = useState("");
   const [isPosting, setIsPosting] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
   const textInputRef = useRef<TextInput>(null);
 
   const createComment = useMutation(api.comments.createComment);
@@ -45,29 +54,19 @@ const CommentInput = ({
       return;
     }
 
-    if (trimmedComment.length > 2000) {
-      Alert.alert(
-        "Comment Too Long",
-        "Comments cannot exceed 2000 characters."
-      );
-      return;
-    }
-
     try {
       setIsPosting(true);
+
       await createComment({
         postId,
         content: trimmedComment,
       });
 
-      // Clear the input and notify parent
       setComment("");
       textInputRef.current?.blur();
       onCommentPosted?.();
 
-      // Show success feedback
       if (Platform.OS === "web") {
-        // Simple success indication for web
         console.log("Comment posted successfully");
       }
     } catch (error) {
@@ -87,44 +86,77 @@ const CommentInput = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputContainer}>
-        <TextInput
-          ref={textInputRef}
-          style={styles.textInput}
-          placeholder={placeholder}
-          placeholderTextColor="#999"
-          value={comment}
-          onChangeText={setComment}
-          multiline
-          maxLength={2000}
-          editable={!isPosting && !!currentUser}
-          textAlignVertical="top"
-        />
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            isSubmitDisabled && styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={isSubmitDisabled}
-        >
-          {isPosting ? (
-            <Ionicons name="hourglass-outline" size={20} color="#999" />
-          ) : (
-            <Ionicons
-              name="send"
-              size={20}
-              color={isSubmitDisabled ? "#999" : "#007AFF"}
+      {currentUser ? (
+        <>
+          {/* --- Text Input at the top --- */}
+          <View
+            style={[
+              styles.inputContainer,
+              isFocused && styles.inputContainerFocused,
+            ]}
+          >
+            <TextInput
+              ref={textInputRef}
+              style={styles.textInput}
+              placeholder={placeholder}
+              placeholderTextColor={"gray"}
+              value={comment}
+              onChangeText={setComment}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              multiline
+              editable={!isPosting}
+              textAlignVertical="top"
             />
-          )}
-        </TouchableOpacity>
-      </View>
+          </View>
 
-      {!currentUser && (
+          {/* --- Send button at the bottom --- */}
+          <TouchableOpacity
+            disabled={isSubmitDisabled}
+            onPress={handleSubmit}
+            style={[styles.sendButton, isSubmitDisabled && styles.sendDisabled]}
+          >
+            <ThemedSendIcon />
+            <CustomText
+              variant="label"
+              fontWeight="semibold"
+              color="onPrimary"
+              style={{ marginLeft: 6 }}
+            >
+              {isPosting ? "Posting..." : "Send"}
+            </CustomText>
+          </TouchableOpacity>
+        </>
+      ) : (
         <View style={styles.signInPrompt}>
-          <CustomText variant="caption" color="muted" textAlign="center">
-            Please sign in to post comments
-          </CustomText>
+          <View style={styles.signInContent}>
+            <Ionicons
+              name="chatbubble-outline"
+              size={22}
+              color={stylesVars.primary}
+              style={{ marginRight: 8 }}
+            />
+            <View style={styles.signInTextContainer}>
+              <CustomText
+                variant="label"
+                fontWeight="semibold"
+                color="onBackground"
+              >
+                Join the Conversation
+              </CustomText>
+              <CustomText variant="small" color="muted">
+                Sign in to share your thoughts and connect with others
+              </CustomText>
+            </View>
+            <TouchableOpacity
+              style={styles.signInButton}
+              onPress={() => DeviceEventEmitter.emit("showLoginPrompt")}
+            >
+              <CustomText variant="label" fontWeight="semibold" color="primary">
+                Sign In
+              </CustomText>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -133,64 +165,77 @@ const CommentInput = ({
 
 export default CommentInput;
 
-const styles = StyleSheet.create((theme) => ({
-  container: {
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.grey300,
-    padding: 16,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    backgroundColor: theme.colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.grey300,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 44,
-    maxHeight: 120,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: theme.colors.onBackground,
-    lineHeight: 20,
-    paddingVertical: 8,
-    paddingRight: 8,
-    minHeight: 28,
-    maxHeight: 88,
-  },
-  submitButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.grey200,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButtonDisabled: {
-    backgroundColor: theme.colors.grey200,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 12,
-  },
-  anonymousToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  characterCount: {
-    alignItems: "flex-end",
-  },
-  signInPrompt: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: theme.colors.grey200,
-    borderRadius: 8,
-  },
-}));
+const styles = StyleSheet.create((theme, rt) => {
+  stylesVars = {
+    primary: theme.colors.primary,
+  };
+
+  return {
+    container: {
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.grey200,
+      padding: theme.paddingHorizontal,
+      paddingBottom: rt.insets.bottom + 12,
+    },
+
+    // --- Input field ---
+    inputContainer: {
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radii.regular,
+      borderWidth: 1,
+      borderColor: theme.colors.grey300,
+      padding: theme.paddingHorizontal,
+      marginBottom: 12,
+    },
+    inputContainerFocused: {
+      borderColor: theme.colors.primary,
+    },
+    textInput: {
+      minHeight: 80, // paragraph-like initial height
+      maxHeight: 140,
+      fontSize: 12,
+      color: theme.colors.onBackground,
+      paddingVertical: 8,
+      fontFamily: theme.fonts.Regular,
+    },
+
+    // --- Send button ---
+    sendButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radii.regular,
+      padding: theme.paddingHorizontal,
+    },
+    sendDisabled: {
+      opacity: 0.5,
+    },
+
+    // --- Sign-in prompt ---
+    signInPrompt: {
+      paddingVertical: 12,
+    },
+    signInContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radii.regular,
+      borderWidth: 1,
+      borderColor: theme.colors.grey200,
+      padding: theme.paddingHorizontal,
+    },
+    signInTextContainer: {
+      flex: 1,
+    },
+    signInButton: {
+      padding: theme.paddingHorizontal,
+      borderRadius: theme.radii.regular,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+    },
+  };
+});
+
+let stylesVars: { primary: string };

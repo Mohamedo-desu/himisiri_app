@@ -1,13 +1,11 @@
 import CustomTabBar from "@/components/tabs/CustomTabBar";
 import CustomText from "@/components/ui/CustomText";
+import { APP_NAME, TAGLINE } from "@/constants/device";
 import { api } from "@/convex/_generated/api";
 import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
-import { DrawerActions } from "@react-navigation/native";
-import { APP_NAME } from "constants/device";
 import { useQuery } from "convex/react";
-import { router, Tabs, useNavigation } from "expo-router";
+import { router, Tabs } from "expo-router";
 import React, { createContext } from "react";
-import { useTranslation } from "react-i18next";
 import { TouchableOpacity, View } from "react-native";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
@@ -35,10 +33,6 @@ const TabsLayout = () => {
 
   // Get notification count for badge
   const notificationCount = useQuery(api.notifications.getUnreadCount);
-
-  const { t } = useTranslation();
-
-  const navigation = useNavigation();
 
   const NAV_ITEMS: NavItem[] = [
     {
@@ -93,9 +87,6 @@ const TabsLayout = () => {
     tabBarActiveTintColor: theme.colors.onPrimary,
     tabBarInactiveTintColor: theme.colors.grey700,
   };
-  const toggleDrawer = () => {
-    navigation.dispatch(DrawerActions.toggleDrawer());
-  };
 
   return (
     <TabScrollYContext.Provider value={scrollY}>
@@ -121,20 +112,13 @@ const TabsLayout = () => {
                 headerShown: headerShown,
                 headerTitle: headerTitle,
                 ...(name === "index" && {
-                  headerLeft: () => (
-                    <TouchableOpacity
-                      style={styles.headerLeftContainer}
-                      activeOpacity={0.8}
-                      onPress={toggleDrawer}
-                    >
-                      <IconsOutline.Bars3Icon color={"white"} size={22} />
-                    </TouchableOpacity>
-                  ),
                   headerRight: () => (
                     <TouchableOpacity
                       style={styles.headerRightContainer}
                       activeOpacity={0.8}
-                      onPress={toggleDrawer}
+                      onPress={() => {
+                        router.navigate("/(main)/create");
+                      }}
                     >
                       <IconsOutline.PlusIcon color={"white"} size={22} />
                     </TouchableOpacity>
@@ -147,21 +131,22 @@ const TabsLayout = () => {
                           variant="subtitle2"
                           bold
                           textAlign="center"
-                          color={tintColor}
+                          color="onPrimary"
                           allowFontScaling={allowFontScaling}
-                          style={style as any}
+                          style={[style as any, { color: tintColor }]}
                         >
-                          {t("common.appName")}
+                          {APP_NAME}
                         </CustomText>
 
                         <CustomText
                           variant="small"
                           italic
                           textAlign="center"
-                          color={tintColor}
+                          color="onPrimary"
                           allowFontScaling={allowFontScaling}
+                          style={{ color: tintColor }}
                         >
-                          {t("common.tagLine")}
+                          {TAGLINE}
                         </CustomText>
                       </View>
                     );

@@ -1,4 +1,4 @@
-import { APP_NAME } from "constants/device";
+import { APP_NAME } from "@/constants/device";
 import { Alert, Platform, Share } from "react-native";
 
 /**

@@ -8,48 +8,72 @@ import Toast from "react-native-toast-message";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
 
-const ThemedHideIcon = withUnistyles(IconsSolid.EyeSlashIcon, (theme) => ({
-  size: theme.gap(3),
-  color: theme.colors.warning,
-}));
 const ThemedDeleteIcon = withUnistyles(IconsSolid.TrashIcon, (theme) => ({
   size: theme.gap(3),
   color: theme.colors.error,
 }));
 
-const MenuOptionsModal = ({ showMenu, onMenuRequestClose, post }) => {
-  const updatePost = useMutation(api.posts.updatePost);
-  const deletePost = useMutation(api.posts.deletePost);
+interface Comment {
+  _id: string;
+  content: string;
+  likesCount: number;
+  hasLiked: boolean;
+  _creationTime: number;
+  editedAt?: number;
+  author?: {
+    _id: string;
+    userName: string;
+    imageUrl?: string;
+    age?: number;
+    gender?: string;
+  } | null;
+}
 
-  const handleDeletePost = () => {
+interface CommentMenuOptionsModalProps {
+  showMenu: boolean;
+  onMenuRequestClose: () => void;
+  comment: Comment;
+  onCommentUpdated?: () => void;
+}
+
+const CommentMenuOptionsModal = ({
+  showMenu,
+  onMenuRequestClose,
+  comment,
+  onCommentUpdated,
+}: CommentMenuOptionsModalProps) => {
+  const deleteComment = useMutation(api.comments.deleteComment);
+
+  const handleDeleteComment = () => {
     onMenuRequestClose();
 
     Alert.alert(
-      "Delete Post",
-      "Are you sure you want to delete this post? This action cannot be undone.",
+      "Delete Comment",
+      "Are you sure you want to delete this comment? This action cannot be undone.",
       [
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
-              await deletePost({ postId: post._id });
+              await deleteComment({ commentId: comment._id as any });
               Toast.show({
                 type: "success",
-                text1: "Post Deleted",
-                text2: "Your post has been deleted successfully",
+                text1: "Comment Deleted",
+                text2: "Your comment has been deleted successfully",
               });
+              onCommentUpdated?.();
             } catch (error) {
               if (error instanceof ConvexError) {
                 Toast.show({
                   type: "error",
-                  text1: "Failed to delete post",
+                  text1: "Failed to delete comment",
                   text2: error.data,
                 });
               } else {
                 Toast.show({
                   type: "error",
-                  text1: "Failed to delete post",
+                  text1: "Failed to delete comment",
                   text2: "Something went wrong, please try again.",
                 });
               }
@@ -59,43 +83,6 @@ const MenuOptionsModal = ({ showMenu, onMenuRequestClose, post }) => {
         { text: "Cancel", style: "cancel" },
       ]
     );
-  };
-
-  const handleHidePost = () => {
-    onMenuRequestClose();
-    Alert.alert("Hide Post", "Hide this post from the public feed?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Hide",
-        onPress: async () => {
-          try {
-            await updatePost({
-              postId: post._id,
-              visibility: "private",
-            });
-            Toast.show({
-              type: "success",
-              text1: "Post Hidden",
-              text2: "Your post has been hidden from public feed",
-            });
-          } catch (error) {
-            if (error instanceof ConvexError) {
-              Toast.show({
-                type: "error",
-                text1: "Failed to hide post",
-                text2: error.data,
-              });
-            } else {
-              Toast.show({
-                type: "error",
-                text1: "Failed to hide post",
-                text2: "Something went wrong, please try again.",
-              });
-            }
-          }
-        },
-      },
-    ]);
   };
 
   return (
@@ -117,27 +104,21 @@ const MenuOptionsModal = ({ showMenu, onMenuRequestClose, post }) => {
             textAlign="center"
             style={styles.menuTitle}
           >
-            Post Options
+            Comment Options
           </CustomText>
-
-          <TouchableOpacity style={styles.menuOption} onPress={handleHidePost}>
-            <CustomText variant="label" style={styles.menuText}>
-              Hide from Feed
-            </CustomText>
-            <ThemedHideIcon />
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuOption}
-            onPress={handleDeletePost}
+            onPress={handleDeleteComment}
           >
             <CustomText variant="label" style={styles.menuText} color="error">
-              Delete Post
+              Delete Comment
             </CustomText>
             <ThemedDeleteIcon />
           </TouchableOpacity>
 
           {/* Cancel Button */}
+
           <TouchableOpacity
             style={styles.menuCancelButton}
             onPress={onMenuRequestClose}
@@ -150,7 +131,7 @@ const MenuOptionsModal = ({ showMenu, onMenuRequestClose, post }) => {
   );
 };
 
-export default MenuOptionsModal;
+export default CommentMenuOptionsModal;
 
 const styles = StyleSheet.create((theme) => ({
   modalOverlay: {
@@ -182,6 +163,7 @@ const styles = StyleSheet.create((theme) => ({
   menuOption: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: theme.gap(1.5),
     paddingHorizontal: theme.gap(1.5),
     borderRadius: theme.radii.regular,
@@ -190,35 +172,48 @@ const styles = StyleSheet.create((theme) => ({
   },
 
   menuText: {
-    marginLeft: theme.gap(1.5),
     flex: 1,
   },
 
-  menuTextWarning: {
-    color: theme.colors.warning,
+  editContainer: {
+    marginBottom: theme.gap(2),
   },
 
-  menuTextError: {
-    color: theme.colors.error,
+  editLabel: {
+    marginBottom: theme.gap(1),
   },
 
-  blockUserWrapper: {
-    marginTop: theme.gap(1),
-  },
-
-  blockUserButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: theme.colors.error,
-    paddingVertical: theme.gap(1),
-    paddingHorizontal: theme.gap(2),
+  editInput: {
+    backgroundColor: theme.colors.background,
     borderRadius: theme.radii.regular,
+    padding: theme.gap(1.5),
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+    color: theme.colors.onBackground,
+    fontSize: 16,
+    textAlignVertical: "top",
+    minHeight: 100,
   },
 
-  blockUserText: {
-    color: theme.colors.error,
-    fontSize: 14,
-    fontWeight: "500",
+  editActions: {
+    flexDirection: "row",
+    gap: theme.gap(1),
+    marginTop: theme.gap(1.5),
+  },
+
+  editButton: {
+    flex: 1,
+    paddingVertical: theme.gap(1.5),
+    borderRadius: theme.radii.regular,
+    alignItems: "center",
+  },
+
+  cancelButton: {
+    backgroundColor: theme.colors.grey200,
+  },
+
+  saveButton: {
+    backgroundColor: theme.colors.primary + "20",
   },
 
   menuCancelButton: {
@@ -227,11 +222,5 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.radii.regular,
     alignItems: "center",
     backgroundColor: theme.colors.grey200,
-  },
-
-  menuCancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.grey700,
   },
 }));

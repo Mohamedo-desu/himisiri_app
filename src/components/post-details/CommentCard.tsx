@@ -18,6 +18,7 @@ import { shareComment } from "@/utils/shareUtils";
 import { ConvexError } from "convex/values";
 import CustomText from "../ui/CustomText";
 import UserAvatar from "../ui/UserAvatar";
+import CommentMenuOptionsModal from "./CommentMenuOptionsModal";
 
 const ThemedMenuIcon = withUnistyles(
   IconsOutline.EllipsisVerticalIcon,
@@ -44,7 +45,8 @@ const CommentCard = ({
   postId,
   onPress,
   isHighlighted = false,
-}: CommentCardProps) => {
+  onCommentUpdated,
+}: CommentCardProps & { onCommentUpdated?: () => void }) => {
   const currentUser = useUserStore((state) => state.currentUser);
 
   const toggleCommentLike = useMutation(api.likes.toggleCommentLike);
@@ -106,8 +108,8 @@ const CommentCard = ({
       router.navigate("/(main)/(tabs)/profile");
     } else {
       router.navigate({
-        pathname: "/(main)/user/[userId]",
-        params: { userId: comment.author._id },
+        pathname: "/(main)/user/[id]",
+        params: { id: comment.author._id },
       });
     }
   };
@@ -198,11 +200,11 @@ const CommentCard = ({
         </View>
 
         {/* Content */}
-        <CustomText variant="body2" color="onSurface">
+        <CustomText variant="small" color="onSurface">
           {moderateContent(comment.content)}
         </CustomText>
 
-        <CustomText variant="small" color="grey500" style={styles.timeText}>
+        <CustomText variant="tiny" color="grey500" style={styles.timeText}>
           {format(new Date(comment._creationTime), "MMM d, yyyy • h:mm a")}
           {comment.editedAt && " • edited"}
         </CustomText>
@@ -240,6 +242,14 @@ const CommentCard = ({
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
+
+      {/* Comment Menu Modal */}
+      <CommentMenuOptionsModal
+        showMenu={showMenu}
+        onMenuRequestClose={() => setShowMenu(false)}
+        comment={comment as any}
+        onCommentUpdated={onCommentUpdated}
+      />
     </>
   );
 };
@@ -251,6 +261,8 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.small,
     padding: theme.paddingHorizontal,
+    width: "95%",
+    alignSelf: "center",
   },
 
   header: {
@@ -291,14 +303,15 @@ const styles = StyleSheet.create((theme) => ({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: theme.gap(1),
   },
   actionIcon: {
     marginRight: 6,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 12,
+    fontFamily: theme.fonts.Regular,
     color: theme.colors.grey500,
   },
   trending: {

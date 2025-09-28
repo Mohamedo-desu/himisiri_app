@@ -5,12 +5,11 @@ import { moderateContent } from "@/utils/moderateContent";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
 import { Link, router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
 import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
-import { Easing } from "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { SECONDARY_COLOR, TERTIARY_COLOR } from "unistyles";
@@ -116,7 +115,7 @@ const PostCard = ({
 
   const handleView = () => {
     router.navigate({
-      pathname: "/(drawer)/post/[id]",
+      pathname: "/(main)/post/[id]",
       params: { id: post._id },
     });
   };
@@ -184,6 +183,13 @@ const PostCard = ({
     }
   };
 
+  useEffect(() => {
+    setLikes(post.likesCount || 0);
+  }, [post.likesCount]);
+  useEffect(() => {
+    setHasLiked(post.hasLiked);
+  }, [post.hasLiked]);
+
   if (!post.author) return null;
 
   return (
@@ -211,16 +217,17 @@ const PostCard = ({
               {post.author?.userName}
             </CustomText>
 
-            <CustomText variant="caption" color="grey500">
+            <CustomText variant="small" color="grey500">
               {post.author?.age}
-              {post.author?.gender?.charAt(0)}
+              {"•"}
+              {post.author?.gender}
             </CustomText>
           </View>
 
           {isTrending && (
             <View style={styles.trending}>
               <ThemedFireIcon />
-              <CustomText variant="caption">Hot</CustomText>
+              <CustomText variant="small">Hot</CustomText>
             </View>
           )}
           {/* Menu Button */}
@@ -238,7 +245,7 @@ const PostCard = ({
         {/* Title */}
         {post.title && (
           <CustomText
-            variant="subtitle2"
+            variant="label"
             bold
             color="onSurface"
             numberOfLines={showFullContent ? undefined : 2}
@@ -249,7 +256,7 @@ const PostCard = ({
 
         {/* Content */}
         <CustomText
-          variant="body2"
+          variant="label"
           color="grey800"
           numberOfLines={showFullContent ? undefined : 3}
         >
@@ -267,7 +274,7 @@ const PostCard = ({
                 inSearchScreen ? (
                   <CustomText
                     key={index}
-                    variant="caption"
+                    variant="tiny"
                     semibold
                     style={{ color: TERTIARY_COLOR }}
                   >
@@ -278,12 +285,12 @@ const PostCard = ({
                     key={index}
                     style={styles.tag}
                     href={{
-                      pathname: "/(drawer)/(tabs)/search/[tag]",
+                      pathname: "/(main)/(tabs)/search/[tag]",
                       params: { tag: tag.toLowerCase() },
                     }}
                   >
                     <CustomText
-                      variant="caption"
+                      variant="small"
                       semibold
                       style={{ color: TERTIARY_COLOR }}
                     >
@@ -295,7 +302,7 @@ const PostCard = ({
           </View>
         )}
 
-        <CustomText variant="caption" color="grey500" style={styles.timeText}>
+        <CustomText variant="tiny" color="grey500" style={styles.timeText}>
           {format(new Date(post._creationTime), "MMM d, yyyy • h:mm a")}
           {post.editedAt && " • edited"}
         </CustomText>
@@ -334,7 +341,6 @@ const PostCard = ({
               includeComma
               animateToNumber={post.commentsCount || 0}
               fontStyle={styles.actionText}
-              easing={Easing.out(Easing.cubic)}
             />
           </TouchableOpacity>
 
@@ -345,7 +351,6 @@ const PostCard = ({
               includeComma
               animateToNumber={post.viewsCount || 0}
               fontStyle={styles.actionText}
-              easing={Easing.out(Easing.cubic)}
             />
           </TouchableOpacity>
 
@@ -375,10 +380,11 @@ export default PostCard;
 const styles = StyleSheet.create((theme) => ({
   card: (isTrending) => ({
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.small,
+    borderRadius: theme.radii.regular,
     padding: theme.paddingHorizontal,
     borderWidth: isTrending ? 1 : 0,
     borderColor: isTrending ? theme.colors.secondary : undefined,
+    height: theme.gap(35),
   }),
 
   header: {
@@ -419,14 +425,15 @@ const styles = StyleSheet.create((theme) => ({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: theme.gap(1),
   },
   actionIcon: {
     marginRight: 6,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 12,
+    fontFamily: theme.fonts.Regular,
     color: theme.colors.grey500,
   },
   trending: {

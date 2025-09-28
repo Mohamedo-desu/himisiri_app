@@ -165,7 +165,6 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     // Determine which posts to return based on availability and preferences
     let filteredPosts: any[];
     let isDoneState = paginatedResult.isDone;
-    let fallbackToViewed = false;
 
     // Strategy 1: If client explicitly wants viewed posts
     if (args.includeViewed === true) {
@@ -189,7 +188,6 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
       } else if (viewedPosts.length > 0) {
         // Fall back to viewed posts if no non-viewed posts available
         filteredPosts = viewedPosts;
-        fallbackToViewed = true;
       } else {
         // No posts available from non-blocked users
         filteredPosts = [];
@@ -285,7 +283,7 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
  * Check if there are non-viewed posts available for the current user
  * Useful for client-side logic to decide when to request viewed posts
  */
-export const hasNonViewedPosts = authenticatedQuery({
+export const hasNonViewedPosts = rateLimitedOptionalAuthQuery({
   args: {
     type: v.optional(
       v.union(
@@ -298,15 +296,24 @@ export const hasNonViewedPosts = authenticatedQuery({
     ),
   },
   handler: async (ctx, args) => {
+    // If user is not authenticated, return default values
+    if (!ctx.user) {
+      return {
+        hasNonViewedPosts: true, // Assume there are posts for unauthenticated users
+        nonViewedCount: 0,
+        totalRecentPosts: 0,
+      };
+    }
+
     // Get blocked user IDs
     const blockedByMe = await ctx.db
       .query("blockedUsers")
-      .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user._id))
+      .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
       .collect();
 
     const blockingMe = await ctx.db
       .query("blockedUsers")
-      .withIndex("by_blocked_user", (q) => q.eq("blockedUserId", ctx.user._id))
+      .withIndex("by_blocked_user", (q) => q.eq("blockedUserId", ctx.user!._id))
       .collect();
 
     const blockedUserIds = [
@@ -317,7 +324,7 @@ export const hasNonViewedPosts = authenticatedQuery({
     // Get viewed post IDs
     const viewedPosts = await ctx.db
       .query("postViews")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
+      .withIndex("by_user", (q) => q.eq("userId", ctx.user!._id))
       .collect();
 
     const viewedPostIds = viewedPosts.map((view) => view.postId);
@@ -354,7 +361,7 @@ export const hasNonViewedPosts = authenticatedQuery({
 /**
  * Create a new post - requires authentication and rate limiting
  */
-export const createPost = rateLimitedAuthMutationMedium({
+export const createPost = authenticatedMutation({
   args: {
     content: v.string(),
     title: v.optional(v.string()),
@@ -557,15 +564,17 @@ export const getPostById = rateLimitedOptionalAuthQuery({
       throw new Error("Authentication required to view this post");
     }
 
-    // Author info is only shown to the owner; all others remain anonymous
+    // Get author info for all posts (consistent with home screen)
     let author = null;
-    if (post.authorId === ctx.user?._id) {
+    const authorDoc = await ctx.db.get(post.authorId);
+    if (authorDoc) {
+      const userDoc = authorDoc as any;
       author = {
-        _id: ctx.user._id,
-        userName: ctx.user.userName,
-        imageUrl: ctx.user.imageUrl,
-        age: ctx.user.age,
-        gender: ctx.user.gender,
+        _id: userDoc._id,
+        userName: userDoc.userName,
+        imageUrl: userDoc.imageUrl,
+        age: userDoc.age,
+        gender: userDoc.gender,
       };
     }
 
@@ -676,7 +685,7 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
     const raw = args.tag.trim().toLowerCase();
 
     if (!raw || raw === "#") {
-      return { page: [], isDone: true, continueCursor: null };
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
     // Normalize the tag so "#sad" always becomes "#sad#"
@@ -731,12 +740,12 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
           age: null,
         };
 
-        // Check if current user liked this post
+        // Check if current user has liked this post
         let hasLiked = false;
         if (ctx.user) {
           const like = await ctx.db
             .query("postLikes")
-            .withIndex("by_user_post", (q) =>
+            .withIndex("by_user_post", (q: any) =>
               q.eq("userId", ctx.user!._id).eq("postId", post._id)
             )
             .unique();
@@ -754,6 +763,7 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
     return {
       ...paginatedResult,
       page: enriched,
+      continueCursor: paginatedResult.continueCursor || "",
     };
   },
 });
