@@ -4,7 +4,7 @@ import { moderateContent } from "@/utils/moderateContent";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
 import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
@@ -156,13 +156,19 @@ const CommentCard = ({
       }
     }
   };
+  useEffect(() => {
+    setLikes(comment.likesCount || 0);
+  }, [comment.likesCount]);
+  useEffect(() => {
+    setHasLiked(comment.hasLiked);
+  }, [comment.hasLiked]);
 
   if (!comment) return null;
   if (!comment.author) return null;
 
   return (
     <>
-      <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+      <TouchableOpacity style={styles.card(isHighlighted)} activeOpacity={0.8}>
         {/* Header */}
         <View style={styles.header}>
           {/* Avatar */}
@@ -257,13 +263,15 @@ const CommentCard = ({
 export default CommentCard;
 
 const styles = StyleSheet.create((theme) => ({
-  card: {
+  card: (isHighlighted) => ({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.small,
     padding: theme.paddingHorizontal,
     width: "95%",
     alignSelf: "center",
-  },
+    borderWidth: isHighlighted ? 1 : 0,
+    borderColor: isHighlighted ? theme.colors.secondary : undefined,
+  }),
 
   header: {
     flexDirection: "row",
@@ -311,7 +319,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   actionText: {
     fontSize: 12,
-    fontFamily: theme.fonts.Regular,
+    //fontFamily: theme.fonts.Regular,
     color: theme.colors.grey500,
   },
   trending: {

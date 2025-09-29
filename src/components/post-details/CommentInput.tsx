@@ -192,7 +192,7 @@ const styles = StyleSheet.create((theme, rt) => {
       borderColor: theme.colors.primary,
     },
     textInput: {
-      minHeight: 80, // paragraph-like initial height
+      minHeight: 40, // paragraph-like initial height
       maxHeight: 140,
       fontSize: 12,
       color: theme.colors.onBackground,

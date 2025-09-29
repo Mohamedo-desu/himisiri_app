@@ -191,7 +191,7 @@ const styles = StyleSheet.create((theme) => ({
   loginButton: {
     borderRadius: theme.radii.small,
     marginBottom: theme.spacing.large,
-    backgroundColor: theme.colors.onPrimary,
+    backgroundColor: theme.colors.secondary,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",

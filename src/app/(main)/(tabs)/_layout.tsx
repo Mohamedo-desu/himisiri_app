@@ -128,7 +128,7 @@ const TabsLayout = () => {
                     return (
                       <View>
                         <CustomText
-                          variant="subtitle2"
+                          variant="label"
                           bold
                           textAlign="center"
                           color="onPrimary"
@@ -139,7 +139,7 @@ const TabsLayout = () => {
                         </CustomText>
 
                         <CustomText
-                          variant="small"
+                          variant="tiny"
                           italic
                           textAlign="center"
                           color="onPrimary"

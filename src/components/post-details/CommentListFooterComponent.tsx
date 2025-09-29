@@ -45,7 +45,7 @@ const CommentListFooterComponent = ({
     return (
       <View style={styles.endContainer}>
         <CustomText variant="small" color="muted">
-          You&apos;ve reached the end of the comments.
+          You&apos;ve reached at the end of the comments.
         </CustomText>
       </View>
     );

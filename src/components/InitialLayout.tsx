@@ -1,11 +1,12 @@
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
+import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
 import { Slot } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import { DeviceEventEmitter } from "react-native";
 import LoginPrompt from "./auth/LoginPrompt";
 
 const InitialLayout = () => {
-  //useSetupForPushNotifications();
+  useSetupForPushNotifications();
 
   const {
     showLoginPrompt,
@@ -44,7 +45,6 @@ const InitialLayout = () => {
   return (
     <>
       <Slot />
-      {/* Login Prompt Modal */}
       <LoginPrompt
         visible={showLoginPrompt}
         onClose={dismissLoginPrompt}

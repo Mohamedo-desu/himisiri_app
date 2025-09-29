@@ -6,9 +6,10 @@ import { TAB_BAR_HEIGHT } from "@/components/tabs/CustomTabBar";
 import { api } from "@/convex/_generated/api";
 import { Doc } from "@/convex/_generated/dataModel";
 import { useUserStore } from "@/store/useUserStore";
+import { EnrichedPost } from "@/types";
 import { LegendListRef, LegendListRenderItemProps } from "@legendapp/list";
 import { AnimatedLegendList } from "@legendapp/list/animated";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import React, { FC, useCallback, useEffect, useRef, useState } from "react";
 import type {
   NativeScrollEvent,
@@ -20,12 +21,14 @@ import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
 import { TabScrollYContext } from "./_layout";
 
-// Type for enriched post data from getPaginatedPosts
-type EnrichedPost = Doc<"posts"> & {
+// Local type matching server response for home screen
+type HomeEnrichedPost = Doc<"posts"> & {
   author?: {
     _id: string;
     userName: string;
     imageUrl?: string;
+    age?: number;
+    gender?: "male" | "female" | "other";
   } | null;
   hasLiked: boolean;
 };
@@ -40,7 +43,6 @@ const HomeScreen = () => {
   const [viewTimers, setViewTimers] = useState<Map<string, NodeJS.Timeout>>(
     new Map()
   );
-  const [includeViewedPosts, setIncludeViewedPosts] = useState(false);
 
   const [processingViews, setProcessingViews] = useState<Set<string>>(
     new Set()
@@ -48,26 +50,14 @@ const HomeScreen = () => {
 
   const { results, status, isLoading, loadMore } = usePaginatedQuery(
     api.posts.getPaginatedPosts,
-    { includeViewed: includeViewedPosts },
+    {},
     { initialNumItems: 10 }
   );
 
   const markPostAsViewed = useMutation(api.postViews.markPostAsViewed);
 
   // Check if non-viewed posts are available (only if authenticated)
-  const nonViewedPostsQuery = useQuery(
-    api.posts.hasNonViewedPosts,
-    currentUser ? {} : "skip"
-  );
-
-  // Auto-switch to include viewed posts if no non-viewed posts available
-  useEffect(() => {
-    if (currentUser && nonViewedPostsQuery) {
-      if (!nonViewedPostsQuery.hasNonViewedPosts && !includeViewedPosts) {
-        setIncludeViewedPosts(true);
-      }
-    }
-  }, [currentUser, nonViewedPostsQuery, includeViewedPosts]);
+  // Server handles unseen-first ordering; no client auto-switch needed
 
   // Handle viewport changes for posts
   const handleViewableItemsChanged = useCallback(
@@ -78,7 +68,7 @@ const HomeScreen = () => {
       }
 
       viewableItems.forEach((viewableItem) => {
-        const post = viewableItem.item as EnrichedPost;
+        const post = viewableItem.item as HomeEnrichedPost;
         const postId = post._id.toString();
 
         // Skip if already viewed, processing, or if it's the user's own post
@@ -161,7 +151,7 @@ const HomeScreen = () => {
       const currentViewableIds = new Set(
         viewableItems
           .filter((item) => item.isViewable)
-          .map((item) => (item.item as EnrichedPost)._id.toString())
+          .map((item) => (item.item as HomeEnrichedPost)._id.toString())
       );
 
       setViewTimers((prev) => {
@@ -221,8 +211,8 @@ const HomeScreen = () => {
   };
 
   const renderItem: React.FC<
-    LegendListRenderItemProps<EnrichedPost, string | undefined>
-  > = ({ item }) => <PostCard post={item} />;
+    LegendListRenderItemProps<HomeEnrichedPost, string | undefined>
+  > = ({ item }) => <PostCard post={item as unknown as EnrichedPost} />;
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -249,11 +239,11 @@ const HomeScreen = () => {
     <>
       <AnimatedLegendList
         ref={listRef}
-        keyExtractor={(item) => (item as EnrichedPost)._id.toString()}
+        keyExtractor={(item) => (item as HomeEnrichedPost)._id.toString()}
         contentContainerStyle={styles.contentContainerStyle}
         showsVerticalScrollIndicator={false}
         style={styles.screen}
-        data={results as EnrichedPost[]}
+        data={results as unknown as EnrichedPost[]}
         renderItem={
           renderItem as FC<
             LegendListRenderItemProps<unknown, string | undefined>

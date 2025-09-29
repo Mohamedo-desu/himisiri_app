@@ -34,19 +34,15 @@ export class PushTokenManager {
 
       const currentUser = useUserStore.getState().currentUser;
 
-      // If userId is missing but currentUser has _id, rerun registration
-      if (
-        !pushTokenUserId &&
-        currentUser &&
-        currentUser._id &&
-        pushTokenString
-      ) {
-        // Import PushTokenService dynamically to avoid circular deps
+      // If logged-in user differs from stored userId, re-register; else avoid re-registering
+      if (currentUser && currentUser._id && pushTokenString) {
+        if (pushTokenUserId && pushTokenUserId === currentUser._id) {
+          return pushTokenRegistered === "true";
+        }
         const { PushTokenService } = await import(
           "@/services/pushTokenService"
         );
         await PushTokenService.registerPushToken(pushTokenString);
-        // Optionally, update local storage with new userId here if needed
       }
 
       // Return true if we have both a token and registration confirmation

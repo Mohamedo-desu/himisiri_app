@@ -1,12 +1,12 @@
 import { v } from "convex/values";
-import { authenticatedMutation } from "./customFunctions";
+import { optionalAuthMutation } from "./customFunctions";
 import { rateLimitedOptionalAuthQuery } from "./rateLimitedFunctions";
 
 /**
  * Update user online status and activity timestamps
  * Simplified approach - only updates user fields, no session management
  */
-export const updateUserStatus = authenticatedMutation({
+export const updateUserStatus = optionalAuthMutation({
   args: {
     status: v.union(
       v.literal("online"), // User is actively using the app
@@ -16,6 +16,11 @@ export const updateUserStatus = authenticatedMutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const isOnline = args.status === "online";
+
+    // If no authenticated user, return early (no-op)
+    if (!ctx.user) {
+      return { success: false, status: args.status, isOnline, timestamp: now };
+    }
 
     // Get current user to check if update is needed
     const currentUser = await ctx.db.get(ctx.user._id);
@@ -48,13 +53,18 @@ export const updateUserStatus = authenticatedMutation({
 /**
  * Record user activity (heartbeat) - updates lastActiveAt if user is online
  */
-export const recordActivity = authenticatedMutation({
+export const recordActivity = optionalAuthMutation({
   args: {},
   handler: async (ctx, args) => {
     const now = Date.now();
 
+    // If no authenticated user, return early (no-op)
+    if (!ctx.user) {
+      return { success: false, timestamp: now };
+    }
+
     // Only update lastActiveAt, don't change online status
-    await ctx.db.patch(ctx.user._id, {
+    await ctx.db.patch(ctx.user!._id, {
       lastActiveAt: now,
     });
 

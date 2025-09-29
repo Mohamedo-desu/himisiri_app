@@ -1,7 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useUserStore } from "@/store/useUserStore";
 import { EnrichedPost } from "@/types";
-import { moderateContent } from "@/utils/moderateContent";
 import { useMutation } from "convex/react";
 import { format } from "date-fns";
 import { Link, router } from "expo-router";
@@ -153,8 +152,8 @@ const PostCard = ({
 
       const result = await sharePost(
         post._id,
-        post.title ? moderateContent(post.title) : undefined,
-        moderateContent(post.content),
+        post.title ? post.title : undefined,
+        post.content,
         post.author?.userName || "Anonymous"
       );
       console.log("Share result:", result);
@@ -250,7 +249,7 @@ const PostCard = ({
             color="onSurface"
             numberOfLines={showFullContent ? undefined : 2}
           >
-            {moderateContent(post.title)}
+            {post.title}
           </CustomText>
         )}
 
@@ -260,7 +259,7 @@ const PostCard = ({
           color="grey800"
           numberOfLines={showFullContent ? undefined : 3}
         >
-          {moderateContent(post.content)}
+          {post.content}
         </CustomText>
 
         {/* Tags */}
@@ -384,7 +383,6 @@ const styles = StyleSheet.create((theme) => ({
     padding: theme.paddingHorizontal,
     borderWidth: isTrending ? 1 : 0,
     borderColor: isTrending ? theme.colors.secondary : undefined,
-    height: theme.gap(35),
   }),
 
   header: {
@@ -433,7 +431,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   actionText: {
     fontSize: 12,
-    fontFamily: theme.fonts.Regular,
+    //fontFamily: theme.fonts.Medium,
     color: theme.colors.grey500,
   },
   trending: {

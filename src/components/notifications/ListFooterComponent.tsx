@@ -1,23 +1,21 @@
 import CustomText from "@/components/ui/CustomText";
-import { EnrichedPost } from "@/types";
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
 
-const ListFooterComponent = ({
-  status,
-  results,
-}: {
+type Props<T> = {
   status: string;
-  results: EnrichedPost[];
-}) => {
+  results: T[];
+};
+
+const ListFooterComponent = <T,>({ status, results }: Props<T>) => {
   return status === "LoadingMore" ? (
-    <View style={styles.listEmptyComponent}>
+    <View style={styles.footer}>
       <ActivityIndicator size="small" color={PRIMARY_COLOR} />
     </View>
   ) : status === "Exhausted" && results.length > 0 ? (
-    <View style={styles.listEmptyComponent}>
+    <View style={styles.footer}>
       <CustomText variant="small" color="grey500">
         You've reached at the end of the list.
       </CustomText>
@@ -28,7 +26,7 @@ const ListFooterComponent = ({
 export default ListFooterComponent;
 
 const styles = StyleSheet.create((theme) => ({
-  listEmptyComponent: {
+  footer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",

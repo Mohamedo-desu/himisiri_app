@@ -1,6 +1,7 @@
 import { APP_NAME } from "@/constants/device";
 import { NOTIFICATION_CHANNEL_ID } from "@/constants/notifications";
 import { PushTokenService } from "@/services/pushTokenService";
+import { useUserStore } from "@/store/useUserStore";
 import { PushTokenManager } from "@/utils/pushTokenManager";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
@@ -14,6 +15,7 @@ function handleRegistrationError(errorMessage: string) {
 
 const useSetupForPushNotifications = () => {
   const hasInitialized = useRef(false);
+  const { currentUser } = useUserStore();
 
   async function registerForPushNotificationsAsync() {
     try {
@@ -21,9 +23,8 @@ const useSetupForPushNotifications = () => {
       const isAlreadyRegistered =
         await PushTokenManager.isPushTokenRegistered();
 
-      if (isAlreadyRegistered) {
-        return;
-      }
+      // If already registered and same user, skip
+      if (isAlreadyRegistered) return;
 
       // Set up notification channel for Android
       if (Platform.OS === "android") {
@@ -99,16 +100,11 @@ const useSetupForPushNotifications = () => {
   }
 
   useEffect(() => {
-    // Prevent multiple initializations
-    if (hasInitialized.current) {
-      return;
+    // Only register when a user is logged in; never auto-unregister here.
+    if (currentUser) {
+      registerForPushNotificationsAsync();
     }
-
-    hasInitialized.current = true;
-
-    // Register for push notifications on app launch
-    registerForPushNotificationsAsync();
-  }, []);
+  }, [currentUser]);
 };
 
 export default useSetupForPushNotifications;

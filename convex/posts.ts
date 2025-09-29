@@ -149,9 +149,16 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     const paginatedResult = await query.paginate(args.paginationOpts);
 
     // Filter out posts from blocked users first
-    const postsFromNonBlockedUsers = paginatedResult.page.filter(
+    let postsFromNonBlockedUsers = paginatedResult.page.filter(
       (post: any) => !blockedUserIds.includes(post.authorId)
     );
+
+    // Exclude current user's own posts from the main page so others are prioritized
+    if (ctx.user) {
+      postsFromNonBlockedUsers = postsFromNonBlockedUsers.filter(
+        (post: any) => post.authorId !== ctx.user!._id
+      );
+    }
 
     // Separate viewed and non-viewed posts
     const nonViewedPosts = postsFromNonBlockedUsers.filter(
@@ -236,19 +243,13 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     // Enrich posts with additional data
     const enrichedPosts = await Promise.all(
       cleanShuffledPosts.map(async (post: POST_TABLE) => {
-        let author = null;
+        let author: USER_TABLE | null = null;
 
         const authorDoc = await ctx.db.get(post.authorId);
 
         if (authorDoc) {
           const userDoc = authorDoc as USER_TABLE;
-          author = {
-            _id: userDoc._id,
-            userName: userDoc.userName,
-            imageUrl: userDoc.imageUrl,
-            age: userDoc.age,
-            gender: userDoc.gender,
-          };
+          author = userDoc;
         }
 
         // Check if current user has liked this post
@@ -271,9 +272,15 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
       })
     );
 
+    // Ensure unseen posts are ordered first just before returning
+    const orderedEnrichedPosts = [
+      ...enrichedPosts.filter((p: any) => !viewedPostIds.includes(p._id)),
+      ...enrichedPosts.filter((p: any) => viewedPostIds.includes(p._id)),
+    ];
+
     return {
       ...paginatedResult,
-      page: enrichedPosts,
+      page: orderedEnrichedPosts,
       isDone: isDoneState && cleanShuffledPosts.length === 0,
     };
   },

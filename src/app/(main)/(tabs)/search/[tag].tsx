@@ -157,9 +157,9 @@ const Results = ({
             marginBottom: 8,
           }}
         >
-          <CustomText variant="subtitle2">Recent searches</CustomText>
+          <CustomText variant="label">Recent searches</CustomText>
           <TouchableOpacity onPress={onClearRecents}>
-            <CustomText variant="body2" color="primary">
+            <CustomText variant="label" color="primary">
               Clear all
             </CustomText>
           </TouchableOpacity>
@@ -172,7 +172,7 @@ const Results = ({
               style={{ paddingVertical: 8 }}
               onPress={() => onSelectRecent(item)}
             >
-              <CustomText variant="body2">{item}</CustomText>
+              <CustomText variant="small">{item}</CustomText>
             </TouchableOpacity>
           )}
         />
@@ -242,5 +242,7 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     color: theme.colors.onBackground,
     paddingVertical: theme.gap(0.5),
+    fontSize: 12,
+    fontFamily: theme.fonts.Regular,
   },
 }));

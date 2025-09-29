@@ -25,7 +25,6 @@ export const sendPushNotification = internalAction({
       );
 
       if (pushTokens.length === 0) {
-        console.log(`No push tokens found for user ${args.userId}`);
         return { success: false, message: "No push tokens found" };
       }
 
@@ -64,7 +63,6 @@ export const sendPushNotification = internalAction({
       }
 
       const result = await response.json();
-      console.log("Push notification sent successfully:", result);
 
       // Handle any invalid tokens by removing them
       if (Array.isArray(result.data)) {
@@ -79,9 +77,6 @@ export const sendPushNotification = internalAction({
             await ctx.runMutation(internal.pushTokens.removePushToken, {
               pushTokenId: pushTokens[i]._id,
             });
-            console.log(
-              `Removed invalid push token: ${pushTokens[i].pushToken}`
-            );
           }
         }
       }

@@ -231,3 +231,7 @@ export type POST_TABLE = Infer<typeof posts.validator> & {
   _id: Id<"posts">;
   _creationTime: number;
 };
+export type NOTIFICATION_TABLE = Infer<typeof notifications.validator> & {
+  _id: Id<"notifications">;
+  _creationTime: number;
+};

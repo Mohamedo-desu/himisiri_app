@@ -1,6 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { convex } from "@/providers/ClerkAndConvexProvider";
-import { saveToLocalStorage } from "@/store/storage";
+import { deleteFromLocalStorage, saveToLocalStorage } from "@/store/storage";
 import { PushTokenManager } from "@/utils/pushTokenManager";
 
 interface RegisterTokenResponse {
@@ -67,6 +67,32 @@ export class PushTokenService {
     } catch (error) {
       console.error("Error saving push token registration:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Unregister push token for this device on server and clear local storage
+   */
+  static async unregisterPushToken(): Promise<{ success: boolean }> {
+    try {
+      const deviceId = await PushTokenManager.getCurrentDeviceId();
+      if (deviceId) {
+        await convex.mutation(api.pushTokens.unregisterPushToken, { deviceId });
+      }
+
+      // Clear local markers
+      deleteFromLocalStorage([
+        "pushTokenString",
+        "pushTokenRegistered",
+        "pushTokenRegisteredAt",
+        "pushTokenId",
+        "pushTokenUserId",
+      ]);
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error unregistering push token:", error);
+      return { success: false };
     }
   }
 }

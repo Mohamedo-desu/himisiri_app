@@ -1,35 +1,38 @@
 import CustomText from "@/components/ui/CustomText";
-import { EnrichedPost } from "@/types";
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { PRIMARY_COLOR } from "unistyles";
 
-const ListEmptyComponent = ({
+type Props<T> = {
+  isLoading: boolean;
+  results: T[];
+  loadingText?: string;
+  emptyText?: string;
+  emptySubText?: string;
+};
+
+const ListEmptyComponent = <T,>({
   isLoading,
   results,
-  customMessage,
-  customSubMessage,
-}: {
-  isLoading: boolean;
-  results: EnrichedPost[];
-  customMessage?: string;
-  customSubMessage?: string;
-}) => {
+  loadingText = "Loading notifications...",
+  emptyText = "No notifications yet",
+  emptySubText = "When someone interacts with your posts, you’ll see it here",
+}: Props<T>) => {
   return isLoading ? (
     <View style={styles.listEmptyComponent}>
       <ActivityIndicator size="small" color={PRIMARY_COLOR} />
       <CustomText variant="label" color="grey500" style={{ marginTop: 10 }}>
-        Loading posts...
+        {loadingText}
       </CustomText>
     </View>
   ) : results.length === 0 ? (
     <View style={styles.listEmptyComponent}>
       <CustomText variant="small" color="grey500">
-        {customMessage || "No results found."}
+        {emptyText}
       </CustomText>
       <CustomText variant="small" color="grey400" style={{ marginTop: 5 }}>
-        {customSubMessage || "Be the first to share something!"}
+        {emptySubText}
       </CustomText>
     </View>
   ) : null;

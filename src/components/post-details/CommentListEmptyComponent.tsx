@@ -58,15 +58,15 @@ const CommentListEmptyComponent = ({
           <ChatBubbleLeftEllipsisIcon size={72} color={PRIMARY_COLOR} />
         </View>
         <CustomText
-          variant="h3"
-          fontWeight="bold"
+          variant="label"
+          bold
           color="onBackground"
           style={styles.emptyTitle}
         >
           {customMessage || "No Comments Yet"}
         </CustomText>
         <CustomText
-          variant="body1"
+          variant="small"
           color="muted"
           textAlign="center"
           style={styles.emptyDescription}
@@ -78,7 +78,7 @@ const CommentListEmptyComponent = ({
         </CustomText>
         <View style={styles.emptyActionContainer}>
           <ArrowLongDownIcon size={20} color={PRIMARY_COLOR} />
-          <CustomText variant="caption" color="primary" fontWeight="medium">
+          <CustomText variant="small" color="primary" fontWeight="medium">
             Scroll down to add a comment
           </CustomText>
         </View>

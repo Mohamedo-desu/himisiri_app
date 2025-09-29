@@ -59,6 +59,32 @@ export const registerPushToken = mutation({
   },
 });
 
+// Public mutation to unregister a device's push token(s) by deviceId
+export const unregisterPushToken = mutation({
+  args: {
+    deviceId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { deviceId } = args;
+
+    if (!deviceId) {
+      return { success: false, message: "Missing deviceId" };
+    }
+
+    // Find any tokens for this device and delete them
+    const tokens = await ctx.db
+      .query("pushTokens")
+      .filter((q) => q.eq(q.field("deviceId"), deviceId))
+      .collect();
+
+    for (const token of tokens) {
+      await ctx.db.delete(token._id);
+    }
+
+    return { success: true, message: "Push token(s) unregistered" };
+  },
+});
+
 // Internal query to get user's push tokens (for use in actions)
 export const getUserPushTokens = internalQuery({
   args: {

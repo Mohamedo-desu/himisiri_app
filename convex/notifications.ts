@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
@@ -33,15 +34,12 @@ export const getUnreadCount = query({
 // Get notifications for a user with pagination
 export const getUserNotifications = query({
   args: {
-    paginationOpts: v.object({
-      numItems: v.number(),
-      cursor: v.optional(v.string()),
-    }),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      return { page: [], isDone: true, continueCursor: null };
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
     const user = await ctx.db
@@ -50,19 +48,14 @@ export const getUserNotifications = query({
       .unique();
 
     if (!user) {
-      return { page: [], isDone: true, continueCursor: null };
+      return { page: [], isDone: true, continueCursor: "" };
     }
-
-    const paginationOptions = {
-      numItems: args.paginationOpts.numItems,
-      cursor: args.paginationOpts.cursor || null,
-    };
 
     const result = await ctx.db
       .query("notifications")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .paginate(paginationOptions);
+      .paginate(args.paginationOpts);
 
     // Enrich notifications with sender information
     const enrichedNotifications = await Promise.all(
@@ -79,6 +72,8 @@ export const getUserNotifications = query({
                 _id: sender._id,
                 userName: sender.userName,
                 imageUrl: sender.imageUrl,
+                age: sender.age,
+                gender: sender.gender,
               }
             : null,
         };
@@ -88,6 +83,7 @@ export const getUserNotifications = query({
     return {
       ...result,
       page: enrichedNotifications,
+      continueCursor: result.continueCursor || "",
     };
   },
 });

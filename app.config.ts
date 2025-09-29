@@ -30,16 +30,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: icon,
     scheme: scheme,
     userInterfaceStyle: "automatic",
-    ios: {
-      supportsTablet: true,
-      bundleIdentifier: bundleIdentifier,
-      icon: {
-        dark: "./assets/images/ios-dark.png",
-        light: "./assets/images/ios-prod.png",
-        tinted: "./assets/images/ios-tinted.png",
-      },
-      associatedDomains: [`applinks:${PROJECT_SLUG}.expo.app`],
-    },
     android: {
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
