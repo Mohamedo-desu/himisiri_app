@@ -1,13 +1,20 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
-import { query } from "./_generated/server";
 import { authenticatedMutation, authenticatedQuery } from "./customFunctions";
 import {
   rateLimitedAuthMutationMedium,
   rateLimitedOptionalAuthQuery,
 } from "./rateLimitedFunctions";
 import { POST_TABLE, USER_TABLE } from "./schema";
+
+const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const phonePattern = /(\+?\d{1,4}[\s-]?)?(\(?\d{1,4}\)?[\s-]?)?[\d\s-]{7,10}/g;
+const addressPattern = /\d+\s[A-z]+\s[A-z]+/g;
+const urlPattern =
+  /(?:https?:\/\/|www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})(?:[^\s]*)/gi;
+const ccnPattern = /\b(?:\d[ -]*?){13,16}\b/g;
+const ssnPattern = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/g;
 
 /**
  * Get paginated posts for the authenticated user
@@ -75,15 +82,6 @@ export const getMyPosts = authenticatedQuery({
 export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
   args: {
     paginationOpts: paginationOptsValidator,
-    type: v.optional(
-      v.union(
-        v.literal("confession"),
-        v.literal("story"),
-        v.literal("question"),
-        v.literal("advice"),
-        v.literal("other")
-      )
-    ),
     visibility: v.optional(
       v.union(
         v.literal("public"),
@@ -91,118 +89,24 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
         v.literal("friends_only")
       )
     ),
-    includeViewed: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    // Get blocked user IDs if user is authenticated
-    let blockedUserIds: string[] = [];
-    // Get viewed post IDs if user is authenticated
-    let viewedPostIds: string[] = [];
-
-    if (ctx.user) {
-      const blockedByMe = await ctx.db
-        .query("blockedUsers")
-        .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
-        .collect();
-
-      const blockingMe = await ctx.db
-        .query("blockedUsers")
-        .withIndex("by_blocked_user", (q) =>
-          q.eq("blockedUserId", ctx.user!._id)
-        )
-        .collect();
-
-      blockedUserIds = [
-        ...blockedByMe.map((block) => block.blockedUserId),
-        ...blockingMe.map((block) => block.blockerId),
-      ];
-
-      // Get posts the user has already viewed
-      const viewedPosts = await ctx.db
-        .query("postViews")
-        .withIndex("by_user", (q) => q.eq("userId", ctx.user!._id))
-        .collect();
-
-      viewedPostIds = viewedPosts.map((view) => view.postId);
-    }
-
     let query = ctx.db
       .query("posts")
-      .withIndex("by_creation_time") // Use creation time for chronological order
+      .withIndex("by_creation_time")
       .filter((q: any) => q.eq(q.field("status"), "active"));
-
-    // Filter by type if specified
-    if (args.type) {
-      query = query.filter((q: any) => q.eq(q.field("type"), args.type));
-    }
 
     // Filter by visibility if specified
     if (args.visibility) {
       query = query.filter((q: any) =>
         q.eq(q.field("visibility"), args.visibility)
       );
-    } else {
-      // Default to public posts only if no visibility specified
-      query = query.filter((q: any) => q.eq(q.field("visibility"), "public"));
     }
 
     const paginatedResult = await query.paginate(args.paginationOpts);
 
-    // Filter out posts from blocked users first
-    let postsFromNonBlockedUsers = paginatedResult.page.filter(
-      (post: any) => !blockedUserIds.includes(post.authorId)
-    );
-
-    // Exclude current user's own posts from the main page so others are prioritized
-    if (ctx.user) {
-      postsFromNonBlockedUsers = postsFromNonBlockedUsers.filter(
-        (post: any) => post.authorId !== ctx.user!._id
-      );
-    }
-
-    // Separate viewed and non-viewed posts
-    const nonViewedPosts = postsFromNonBlockedUsers.filter(
-      (post: any) => !viewedPostIds.includes(post._id)
-    );
-
-    const viewedPosts = postsFromNonBlockedUsers.filter((post: any) =>
-      viewedPostIds.includes(post._id)
-    );
-
-    // Determine which posts to return based on availability and preferences
-    let filteredPosts: any[];
-    let isDoneState = paginatedResult.isDone;
-
-    // Strategy 1: If client explicitly wants viewed posts
-    if (args.includeViewed === true) {
-      filteredPosts = postsFromNonBlockedUsers; // Include both viewed and non-viewed
-    }
-    // Strategy 2: Default behavior - prefer non-viewed, fallback to viewed
-    else {
-      if (nonViewedPosts.length > 0) {
-        // Prefer non-viewed posts
-        filteredPosts = nonViewedPosts;
-
-        // Check if we should supplement with viewed posts to meet requested count
-        const requestedCount = args.paginationOpts.numItems || 10;
-        if (filteredPosts.length < requestedCount && viewedPosts.length > 0) {
-          const additionalViewedPosts = viewedPosts.slice(
-            0,
-            requestedCount - nonViewedPosts.length
-          );
-          filteredPosts = [...nonViewedPosts, ...additionalViewedPosts];
-        }
-      } else if (viewedPosts.length > 0) {
-        // Fall back to viewed posts if no non-viewed posts available
-        filteredPosts = viewedPosts;
-      } else {
-        // No posts available from non-blocked users
-        filteredPosts = [];
-      }
-    }
-
     // Create deterministic shuffle using daily seed + user ID to prevent jumpy posts
-    const shuffledPosts = filteredPosts.slice();
+    const shuffledPosts = paginatedResult.page.slice();
 
     // Use current date + user ID as seed for consistent daily ordering per user
     const today = new Date();
@@ -243,13 +147,16 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     // Enrich posts with additional data
     const enrichedPosts = await Promise.all(
       cleanShuffledPosts.map(async (post: POST_TABLE) => {
-        let author: USER_TABLE | null = null;
+        let author = null;
 
         const authorDoc = await ctx.db.get(post.authorId);
-
         if (authorDoc) {
           const userDoc = authorDoc as USER_TABLE;
-          author = userDoc;
+          author = {
+            _id: userDoc._id,
+            userName: userDoc.userName,
+            imageUrl: userDoc.imageUrl,
+          };
         }
 
         // Check if current user has liked this post
@@ -264,103 +171,26 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
           hasLiked = !!like;
         }
 
+        const cleanedContent = post.content
+          .replace(emailPattern, "[***]")
+          .replace(phonePattern, "[***]")
+          .replace(addressPattern, "[***]")
+          .replace(urlPattern, "[***]")
+          .replace(ccnPattern, "[***]")
+          .replace(ssnPattern, "[***]");
+
         return {
           ...post,
+          content: cleanedContent,
           author,
           hasLiked,
         };
       })
     );
 
-    // Ensure unseen posts are ordered first just before returning
-    const orderedEnrichedPosts = [
-      ...enrichedPosts.filter((p: any) => !viewedPostIds.includes(p._id)),
-      ...enrichedPosts.filter((p: any) => viewedPostIds.includes(p._id)),
-    ];
-
     return {
       ...paginatedResult,
-      page: orderedEnrichedPosts,
-      isDone: isDoneState && cleanShuffledPosts.length === 0,
-    };
-  },
-});
-
-/**
- * Check if there are non-viewed posts available for the current user
- * Useful for client-side logic to decide when to request viewed posts
- */
-export const hasNonViewedPosts = rateLimitedOptionalAuthQuery({
-  args: {
-    type: v.optional(
-      v.union(
-        v.literal("confession"),
-        v.literal("story"),
-        v.literal("question"),
-        v.literal("advice"),
-        v.literal("other")
-      )
-    ),
-  },
-  handler: async (ctx, args) => {
-    // If user is not authenticated, return default values
-    if (!ctx.user) {
-      return {
-        hasNonViewedPosts: true, // Assume there are posts for unauthenticated users
-        nonViewedCount: 0,
-        totalRecentPosts: 0,
-      };
-    }
-
-    // Get blocked user IDs
-    const blockedByMe = await ctx.db
-      .query("blockedUsers")
-      .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
-      .collect();
-
-    const blockingMe = await ctx.db
-      .query("blockedUsers")
-      .withIndex("by_blocked_user", (q) => q.eq("blockedUserId", ctx.user!._id))
-      .collect();
-
-    const blockedUserIds = [
-      ...blockedByMe.map((block) => block.blockedUserId),
-      ...blockingMe.map((block) => block.blockerId),
-    ];
-
-    // Get viewed post IDs
-    const viewedPosts = await ctx.db
-      .query("postViews")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user!._id))
-      .collect();
-
-    const viewedPostIds = viewedPosts.map((view) => view.postId);
-
-    let query = ctx.db
-      .query("posts")
-      .withIndex("by_creation_time")
-      .filter((q: any) => q.eq(q.field("status"), "active"))
-      .filter((q: any) => q.eq(q.field("visibility"), "public"));
-
-    // Filter by type if specified
-    if (args.type) {
-      query = query.filter((q: any) => q.eq(q.field("type"), args.type));
-    }
-
-    // Get first few posts to check
-    const recentPosts = await query.order("desc").take(20);
-
-    // Check if any non-viewed posts exist from non-blocked users
-    const nonViewedPosts = recentPosts.filter(
-      (post: any) =>
-        !blockedUserIds.includes(post.authorId) &&
-        !viewedPostIds.includes(post._id)
-    );
-
-    return {
-      hasNonViewedPosts: nonViewedPosts.length > 0,
-      nonViewedCount: nonViewedPosts.length,
-      totalRecentPosts: recentPosts.length,
+      page: enrichedPosts,
     };
   },
 });
@@ -372,14 +202,6 @@ export const createPost = authenticatedMutation({
   args: {
     content: v.string(),
     title: v.optional(v.string()),
-    type: v.union(
-      v.literal("confession"),
-      v.literal("story"),
-      v.literal("question"),
-      v.literal("advice"),
-      v.literal("other")
-    ),
-    // tags array no longer persisted; only used as input to form tagsText
     tags: v.optional(v.array(v.string())),
     visibility: v.union(
       v.literal("public"),
@@ -387,7 +209,6 @@ export const createPost = authenticatedMutation({
       v.literal("friends_only")
     ),
     imageUrl: v.optional(v.string()),
-    storageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     // ctx.user is automatically available and guaranteed to exist
@@ -401,29 +222,26 @@ export const createPost = authenticatedMutation({
       throw new Error("Post content cannot exceed 5000 characters");
     }
 
-    // Normalize tags to lowercase text string like: #tag1#tag2#
+    // Normalize tags array to a single string like: #tag1#tag2#
     const normalizedTags = (args.tags || [])
-      ?.map((t) => (typeof t === "string" ? t.trim().toLowerCase() : t))
-      .filter((t) => typeof t === "string" && t.length > 0);
-    const tagsText = normalizedTags.length
-      ? `#${normalizedTags.join("#")}#`.replace(/##+/g, "##").replace(/#$/, "#")
-      : undefined;
+      .filter((t) => typeof t === "string" && t.trim().length > 0) // keep only non-empty strings
+      .map((t) => t.trim().toLowerCase()); // lowercase & trim
+
+    const tagsText =
+      normalizedTags.length > 0
+        ? `#${normalizedTags.join("#")}#` // join with single # separators
+        : undefined;
 
     // Create the post
     const postId = await ctx.db.insert("posts", {
       authorId: ctx.user._id,
       content: args.content,
       title: args.title,
-      type: args.type,
       tagsText,
       likesCount: 0,
       commentsCount: 0,
-      viewsCount: 0,
-      reportsCount: 0,
       status: "active",
       visibility: args.visibility,
-      imageUrl: args.imageUrl,
-      storageId: args.storageId,
     });
 
     // Update user's post count
@@ -432,76 +250,6 @@ export const createPost = authenticatedMutation({
     });
 
     return postId;
-  },
-});
-
-/**
- * Update a post - requires authentication, ownership, and rate limiting
- */
-export const updatePost = rateLimitedAuthMutationMedium({
-  args: {
-    postId: v.id("posts"),
-    content: v.optional(v.string()),
-    title: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    visibility: v.optional(
-      v.union(
-        v.literal("public"),
-        v.literal("private"),
-        v.literal("friends_only")
-      )
-    ),
-  },
-  handler: async (ctx, args) => {
-    // Get the post
-    const post = await ctx.db.get(args.postId);
-    if (!post) {
-      throw new Error("Post not found");
-    }
-
-    // Check ownership
-    if (post.authorId !== ctx.user._id) {
-      throw new Error("You can only edit your own posts");
-    }
-
-    // Check if post is still editable
-    if (post.status !== "active") {
-      throw new Error("Cannot edit posts that are hidden or removed");
-    }
-
-    // Prepare update object
-    const updates: Partial<Doc<"posts">> = {
-      editedAt: Date.now(),
-    };
-
-    if (args.content !== undefined) {
-      if (args.content.length < 10 || args.content.length > 5000) {
-        throw new Error("Post content must be between 10 and 5000 characters");
-      }
-      updates.content = args.content;
-    }
-
-    if (args.title !== undefined) {
-      updates.title = args.title;
-    }
-
-    if (args.tags !== undefined) {
-      const normalized = (args.tags || [])
-        ?.map((t) => (typeof t === "string" ? t.trim().toLowerCase() : t))
-        .filter((t) => typeof t === "string" && t.length > 0);
-      updates.tagsText = normalized.length
-        ? `#${normalized.join("#")}#`.replace(/##+/g, "##").replace(/#$/, "#")
-        : undefined;
-    }
-
-    if (args.visibility !== undefined) {
-      updates.visibility = args.visibility;
-    }
-
-    // Update the post
-    await ctx.db.patch(args.postId, updates);
-
-    return { success: true };
   },
 });
 
@@ -597,92 +345,20 @@ export const getPostById = rateLimitedOptionalAuthQuery({
       hasLiked = !!like;
     }
 
+    const cleanedContent = post.content
+      .replace(emailPattern, "[***]")
+      .replace(phonePattern, "[***]")
+      .replace(addressPattern, "[***]")
+      .replace(urlPattern, "[***]")
+      .replace(ccnPattern, "[***]")
+      .replace(ssnPattern, "[***]");
+
     return {
       ...post,
+      content: cleanedContent,
       author,
       hasLiked,
     };
-  },
-});
-
-/**
- * Get posts by a specific author
- */
-export const getPostsByAuthor = query({
-  args: {
-    authorId: v.id("users"),
-  },
-  handler: async (ctx, { authorId }) => {
-    // Get all active posts by the author
-    const posts = await ctx.db
-      .query("posts")
-      .withIndex("by_author", (q) => q.eq("authorId", authorId))
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .order("desc")
-      .collect();
-
-    // Get author info
-    const author = await ctx.db.get(authorId);
-    if (!author) {
-      return [];
-    }
-
-    // Return posts with author info
-    return posts.map((post) => ({
-      ...post,
-      author: {
-        _id: author._id,
-        userName: author.userName,
-        imageUrl: author.imageUrl,
-      },
-      hasLiked: false, // We don't track likes for this simple view
-    }));
-  },
-});
-
-/**
- * Get posts that the current user has liked
- */
-export const getLikedPosts = authenticatedQuery({
-  args: {},
-  handler: async (ctx, args) => {
-    // Get all likes by the current user
-    const userLikes = await ctx.db
-      .query("postLikes")
-      .withIndex("by_user", (q) => q.eq("userId", ctx.user._id))
-      .order("desc")
-      .collect();
-
-    // Get all the posts that were liked
-    const likedPosts = await Promise.all(
-      userLikes.map(async (like) => {
-        const post = await ctx.db.get(like.postId);
-        if (!post || post.status !== "active") {
-          return null;
-        }
-
-        // Get author info
-        let author = null;
-        const authorDoc = await ctx.db.get(post.authorId);
-        if (authorDoc) {
-          const userDoc = authorDoc as any;
-          author = {
-            _id: userDoc._id,
-            userName: userDoc.userName,
-            imageUrl: userDoc.imageUrl,
-          };
-        }
-
-        return {
-          ...post,
-          author,
-          hasLiked: true, // Always true since these are liked posts
-        };
-      })
-    );
-
-    // Filter out null posts and return
-    return likedPosts.filter((post) => post !== null);
   },
 });
 
@@ -699,25 +375,6 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
     let normalized = raw.startsWith("#") ? raw : `#${raw}`;
 
     // Get blocked user IDs
-    let blockedUserIds: string[] = [];
-    if (ctx.user) {
-      const [blockedByMe, blockingMe] = await Promise.all([
-        ctx.db
-          .query("blockedUsers")
-          .withIndex("by_blocker", (q) => q.eq("blockerId", ctx.user!._id))
-          .collect(),
-        ctx.db
-          .query("blockedUsers")
-          .withIndex("by_blocked_user", (q) =>
-            q.eq("blockedUserId", ctx.user!._id)
-          )
-          .collect(),
-      ]);
-      blockedUserIds = [
-        ...blockedByMe.map((b) => b.blockedUserId),
-        ...blockingMe.map((b) => b.blockerId),
-      ];
-    }
 
     // Fetch public active posts with pagination
     const paginatedResult = await ctx.db
@@ -727,10 +384,9 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
       )
       .paginate(args.paginationOpts);
 
-    // Filter out blocked users + non-matching tags
+    // Filter out non-matching tags
     const filtered = paginatedResult.page.filter(
       (post) =>
-        !blockedUserIds.includes(post.authorId) &&
         typeof post.tagsText === "string" &&
         post.tagsText.toLowerCase().includes(normalized)
     );
@@ -743,8 +399,6 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
           _id: post.authorId,
           userName: "Unknown",
           imageUrl: null,
-          gender: null,
-          age: null,
         };
 
         // Check if current user has liked this post
@@ -759,8 +413,17 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
           hasLiked = !!like;
         }
 
+        const cleanedContent = post.content
+          .replace(emailPattern, "[***]")
+          .replace(phonePattern, "[***]")
+          .replace(addressPattern, "[***]")
+          .replace(urlPattern, "[***]")
+          .replace(ccnPattern, "[***]")
+          .replace(ssnPattern, "[***]");
+
         return {
           ...post,
+          content: cleanedContent,
           author,
           hasLiked,
         };
@@ -772,5 +435,43 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
       page: enriched,
       continueCursor: paginatedResult.continueCursor || "",
     };
+  },
+});
+
+export const updatePost = rateLimitedAuthMutationMedium({
+  args: {
+    postId: v.id("posts"),
+    content: v.optional(v.string()),
+    title: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    visibility: v.optional(v.union(v.literal("public"), v.literal("private"))),
+  },
+  handler: async (ctx, args) => {
+    // Get the post
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("Post not found");
+    }
+
+    // Check ownership
+    if (post.authorId !== ctx.user._id) {
+      throw new Error("You can only edit your own posts");
+    }
+
+    // Check if post is still editable
+    if (post.status !== "active") {
+      throw new Error("Cannot edit posts that are hidden or removed");
+    }
+
+    const updates: Partial<Doc<"posts">> = {};
+
+    if (args.visibility !== undefined) {
+      updates.visibility = args.visibility;
+    }
+
+    // Update the post
+    await ctx.db.patch(args.postId, updates);
+
+    return { success: true };
   },
 });

@@ -1,18 +1,10 @@
 import { HATE_WORDS } from "@/constants/moderation";
 
-export const moderateContent = (text: string) => {
+export const moderateContent = (text: string | undefined) => {
   try {
-    let moderated: string = text;
+    if (!text) return null;
 
-    // Regex patterns
-    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    const phonePattern =
-      /(\+?\d{1,4}[\s-]?)?(\(?\d{1,4}\)?[\s-]?)?[\d\s-]{7,10}/g;
-    const addressPattern = /\d+\s[A-z]+\s[A-z]+/g;
-    const urlPattern =
-      /(?:https?:\/\/|www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})(?:[^\s]*)/gi;
-    const ccnPattern = /\b(?:\d[ -]*?){13,16}\b/g;
-    const ssnPattern = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/g;
+    let moderated: string = text;
 
     // List of common hate and swear words
 
@@ -21,14 +13,7 @@ export const moderateContent = (text: string) => {
       "gi"
     );
 
-    // Replace matched patterns with ****
-    moderated = moderated.replace(emailPattern, "****");
-    moderated = moderated.replace(phonePattern, "****");
-    moderated = moderated.replace(addressPattern, "****");
-    moderated = moderated.replace(urlPattern, "****");
-    moderated = moderated.replace(ccnPattern, "****");
-    moderated = moderated.replace(ssnPattern, "****");
-    moderated = moderated.replace(hatePattern, "****");
+    moderated = moderated.replace(hatePattern, "***");
 
     return moderated;
   } catch (error) {

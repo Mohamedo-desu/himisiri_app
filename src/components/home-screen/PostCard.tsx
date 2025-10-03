@@ -2,7 +2,6 @@ import { api } from "@/convex/_generated/api";
 import { useUserStore } from "@/store/useUserStore";
 import { EnrichedPost } from "@/types";
 import { useMutation } from "convex/react";
-import { format } from "date-fns";
 import { Link, router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
@@ -14,8 +13,11 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { SECONDARY_COLOR, TERTIARY_COLOR } from "unistyles";
 import MenuOptionsModal from "../post-details/MenuOptionsModal";
 
+import { useSettingsStore } from "@/store/useSettingsStore";
+import { moderateContent } from "@/utils/moderateContent";
 import { sharePost } from "@/utils/shareUtils";
 import { ConvexError } from "convex/values";
+import { format } from "date-fns";
 import CustomText from "../ui/CustomText";
 import UserAvatar from "../ui/UserAvatar";
 
@@ -51,14 +53,12 @@ const ThemedCommentIcon = withUnistyles(
     color: theme.colors.grey500,
   })
 );
-const ThemedViewIcon = withUnistyles(IconsSolid.EyeIcon, (theme) => ({
-  size: theme.gap(3),
-  color: theme.colors.grey500,
-}));
 const ThemedFireIcon = withUnistyles(IconsSolid.FireIcon, (theme) => ({
   size: theme.gap(3),
   color: theme.colors.secondary,
 }));
+
+const MAX_LINES = 3;
 
 const PostCard = ({
   post,
@@ -66,13 +66,17 @@ const PostCard = ({
   inSearchScreen = false,
 }: PostCardProps) => {
   const { currentUser } = useUserStore();
-
+  const { hideOffensiveWords } = useSettingsStore();
   const togglePostLike = useMutation(api.likes.togglePostLike);
 
   const [likes, setLikes] = useState(post.likesCount || 0);
   const [hasLiked, setHasLiked] = useState(post.hasLiked || false);
   const [showMenu, setShowMenu] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
   const [isTrending] = useState(false);
+
+  const shouldShowToggle = showFullContent && post.content.length > 120;
 
   const isMyPost =
     currentUser &&
@@ -127,18 +131,6 @@ const PostCard = ({
     setShowMenu(true);
   };
 
-  const handleUserPress = () => {
-    if (!post.author) return;
-    if (post.author._id === currentUser?._id) {
-      router.navigate("/(drawer)/(tabs)/profile");
-    } else {
-      router.navigate({
-        pathname: "/(drawer)/user/[id]",
-        params: { id: post.author._id },
-      });
-    }
-  };
-
   const handleSharePost = async () => {
     try {
       if (typeof sharePost !== "function") {
@@ -152,11 +144,10 @@ const PostCard = ({
 
       const result = await sharePost(
         post._id,
-        post.title ? post.title : undefined,
-        post.content,
+        hideOffensiveWords ? moderateContent(post?.title) : post.title,
+        hideOffensiveWords ? moderateContent(post.content) : post.content,
         post.author?.userName || "Anonymous"
       );
-      console.log("Share result:", result);
 
       if (result) {
         Toast.show({
@@ -201,25 +192,22 @@ const PostCard = ({
         {/* Header */}
         <View style={styles.header}>
           {/* Avatar */}
-          <TouchableOpacity style={styles.avatar} onPress={handleUserPress}>
+          <View style={styles.avatar}>
             <UserAvatar
               imageUrl={post.author.imageUrl as string}
               size={40}
               userId={post.author._id}
               indicatorSize="medium"
             />
-          </TouchableOpacity>
+          </View>
 
           {/* User Info */}
           <View style={styles.userInfo}>
             <CustomText variant="label" semibold color="onSurface">
               {post.author?.userName}
             </CustomText>
-
-            <CustomText variant="small" color="grey500">
-              {post.author?.age}
-              {"•"}
-              {post.author?.gender}
+            <CustomText variant="tiny" color="grey500" style={styles.timeText}>
+              {format(new Date(post._creationTime), "MMM d, yyyy • h:mm a")}
             </CustomText>
           </View>
 
@@ -249,7 +237,7 @@ const PostCard = ({
             color="onSurface"
             numberOfLines={showFullContent ? undefined : 2}
           >
-            {post.title}
+            {hideOffensiveWords ? moderateContent(post.title) : post.title}
           </CustomText>
         )}
 
@@ -257,11 +245,24 @@ const PostCard = ({
         <CustomText
           variant="label"
           color="grey800"
-          numberOfLines={showFullContent ? undefined : 3}
+          numberOfLines={
+            showFullContent ? (expanded ? undefined : MAX_LINES) : 3
+          }
         >
-          {post.content}
+          {hideOffensiveWords ? moderateContent(post.content) : post.content}
         </CustomText>
-
+        {shouldShowToggle && (
+          <TouchableOpacity onPress={() => setExpanded((prev) => !prev)}>
+            <CustomText
+              variant="small"
+              semibold
+              color="primary"
+              style={{ marginVertical: 4 }}
+            >
+              {expanded ? "See less" : "See more"}
+            </CustomText>
+          </TouchableOpacity>
+        )}
         {/* Tags */}
 
         {post.tagsText && (
@@ -301,10 +302,6 @@ const PostCard = ({
           </View>
         )}
 
-        <CustomText variant="tiny" color="grey500" style={styles.timeText}>
-          {format(new Date(post._creationTime), "MMM d, yyyy • h:mm a")}
-          {post.editedAt && " • edited"}
-        </CustomText>
         {/* Actions */}
         <View style={styles.actions}>
           {/* Like Button */}
@@ -339,16 +336,6 @@ const PostCard = ({
             <AnimatedNumbers
               includeComma
               animateToNumber={post.commentsCount || 0}
-              fontStyle={styles.actionText}
-            />
-          </TouchableOpacity>
-
-          {/* View Count */}
-          <TouchableOpacity style={styles.actionButton} disabled>
-            <ThemedViewIcon />
-            <AnimatedNumbers
-              includeComma
-              animateToNumber={post.viewsCount || 0}
               fontStyle={styles.actionText}
             />
           </TouchableOpacity>
@@ -399,24 +386,21 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
   },
   timeText: {
-    marginVertical: theme.gap(1),
+    // marginVertical: theme.gap(1),
   },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginTop: theme.gap(1),
+    marginVertical: theme.gap(1),
     gap: theme.gap(1),
   },
 
-  tag: {
-    borderRadius: theme.radii.small,
-    paddingHorizontal: theme.gap(0.5),
-  },
+  tag: {},
   actions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: theme.gap(1),
+    marginTop: theme.gap(2),
   },
 
   // Action buttons

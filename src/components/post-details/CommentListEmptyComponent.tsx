@@ -55,7 +55,7 @@ const CommentListEmptyComponent = ({
     <View style={styles.emptyContainer}>
       <View style={styles.emptyContent}>
         <View style={styles.emptyIconContainer}>
-          <ChatBubbleLeftEllipsisIcon size={72} color={PRIMARY_COLOR} />
+          <ChatBubbleLeftEllipsisIcon size={35} color={PRIMARY_COLOR} />
         </View>
         <CustomText
           variant="label"
@@ -108,7 +108,7 @@ const styles = StyleSheet.create((theme) => ({
     maxWidth: 300,
   },
   emptyIconContainer: {
-    padding: 20,
+    padding: theme.paddingHorizontal * 2,
     backgroundColor: theme.colors.primary + "10",
     borderRadius: 50,
   },

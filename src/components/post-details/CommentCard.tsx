@@ -1,17 +1,11 @@
-import { api } from "@/convex/_generated/api";
 import { useUserStore } from "@/store/useUserStore";
-import { moderateContent } from "@/utils/moderateContent";
-import { useMutation } from "convex/react";
 import { format } from "date-fns";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
-import AnimatedNumbers from "react-native-animated-numbers";
 import * as IconsOutline from "react-native-heroicons/outline";
 import * as IconsSolid from "react-native-heroicons/solid";
 import Toast from "react-native-toast-message";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { SECONDARY_COLOR } from "unistyles";
 
 import { CommentCardProps } from "@/types";
 import { shareComment } from "@/utils/shareUtils";
@@ -27,33 +21,26 @@ const ThemedMenuIcon = withUnistyles(
     color: theme.colors.grey500,
   })
 );
-const ThemedLikeIcon = withUnistyles(IconsSolid.HeartIcon, (theme) => ({
-  size: theme.gap(2.5),
-  color: theme.colors.secondary,
-}));
-const ThemedUnlikeIcon = withUnistyles(IconsOutline.HeartIcon, (theme) => ({
-  size: theme.gap(2.5),
-  color: theme.colors.grey500,
-}));
+
 const ThemedShareIcon = withUnistyles(IconsSolid.ShareIcon, (theme) => ({
   size: theme.gap(2.5),
   color: theme.colors.grey500,
 }));
 
+const MAX_LINES = 3;
+
 const CommentCard = ({
   comment,
   postId,
-  onPress,
   isHighlighted = false,
   onCommentUpdated,
 }: CommentCardProps & { onCommentUpdated?: () => void }) => {
   const currentUser = useUserStore((state) => state.currentUser);
 
-  const toggleCommentLike = useMutation(api.likes.toggleCommentLike);
-
-  const [likes, setLikes] = useState(comment?.likesCount || 0);
-  const [hasLiked, setHasLiked] = useState(comment?.hasLiked || false);
   const [showMenu, setShowMenu] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const shouldShowToggle = comment.content.length > 100;
 
   const isMyComment = !!(
     currentUser &&
@@ -61,57 +48,12 @@ const CommentCard = ({
     comment.author._id === currentUser._id
   );
 
-  const handleLike = async () => {
-    if (!currentUser) {
-      DeviceEventEmitter.emit("showLoginPrompt");
-      return;
-    }
-
-    if (hasLiked) {
-      setLikes((prev) => prev - 1);
-      setHasLiked(false);
-    } else {
-      setLikes((prev) => prev + 1);
-      setHasLiked(true);
-    }
-
-    try {
-      await toggleCommentLike({ commentId: comment._id });
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        Toast.show({
-          type: "error",
-          text1: "Failed to like/unlike post",
-          text2: error.data,
-        });
-      } else {
-        Toast.show({
-          type: "error",
-          text1: "Failed to like/unlike post",
-          text2: "Something went wrong, please try again.",
-        });
-      }
-    }
-  };
-
   const handleMenuPress = () => {
     if (!currentUser) {
       DeviceEventEmitter.emit("showLoginPrompt");
       return;
     }
     setShowMenu(true);
-  };
-
-  const handleUserPress = () => {
-    if (!comment.author) return;
-    if (comment.author._id === currentUser?._id) {
-      router.navigate("/(main)/(tabs)/profile");
-    } else {
-      router.navigate({
-        pathname: "/(main)/user/[id]",
-        params: { id: comment.author._id },
-      });
-    }
   };
 
   const handleSharePost = async () => {
@@ -128,7 +70,7 @@ const CommentCard = ({
       const result = await shareComment(
         postId as string,
         comment._id as unknown as string,
-        moderateContent(comment.content),
+        comment.content,
         comment.author?.userName || "Anonymous"
       );
       console.log("Share result:", result);
@@ -156,12 +98,6 @@ const CommentCard = ({
       }
     }
   };
-  useEffect(() => {
-    setLikes(comment.likesCount || 0);
-  }, [comment.likesCount]);
-  useEffect(() => {
-    setHasLiked(comment.hasLiked);
-  }, [comment.hasLiked]);
 
   if (!comment) return null;
   if (!comment.author) return null;
@@ -172,24 +108,22 @@ const CommentCard = ({
         {/* Header */}
         <View style={styles.header}>
           {/* Avatar */}
-          <TouchableOpacity style={styles.avatar} onPress={handleUserPress}>
+          <View style={styles.avatar}>
             <UserAvatar
               imageUrl={comment.author.imageUrl as string}
               size={30}
               userId={comment.author._id}
               indicatorSize={"small"}
             />
-          </TouchableOpacity>
+          </View>
 
           {/* User Info */}
           <View style={styles.userInfo}>
             <CustomText variant="small" semibold color="onSurface">
               {comment.author?.userName}
             </CustomText>
-
-            <CustomText variant="small" color="grey500">
-              {comment.author?.age}
-              {comment.author?.gender?.charAt(0)}
+            <CustomText variant="tiny" color="grey500" style={styles.timeText}>
+              {format(new Date(comment._creationTime), "MMM d, yyyy • h:mm a")}
             </CustomText>
           </View>
 
@@ -206,39 +140,27 @@ const CommentCard = ({
         </View>
 
         {/* Content */}
-        <CustomText variant="small" color="onSurface">
-          {moderateContent(comment.content)}
+        <CustomText
+          variant="small"
+          color="onSurface"
+          numberOfLines={expanded ? undefined : MAX_LINES}
+        >
+          {comment.content}
         </CustomText>
-
-        <CustomText variant="tiny" color="grey500" style={styles.timeText}>
-          {format(new Date(comment._creationTime), "MMM d, yyyy • h:mm a")}
-          {comment.editedAt && " • edited"}
-        </CustomText>
+        {shouldShowToggle && (
+          <TouchableOpacity onPress={() => setExpanded((prev) => !prev)}>
+            <CustomText
+              variant="tiny"
+              semibold
+              color="primary"
+              style={{ marginTop: 2 }}
+            >
+              {expanded ? "See less" : "See more"}
+            </CustomText>
+          </TouchableOpacity>
+        )}
         {/* Actions */}
         <View style={styles.actions}>
-          {/* Like Button */}
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              hasLiked && {
-                backgroundColor: SECONDARY_COLOR + "20",
-                paddingHorizontal: 3,
-                borderRadius: 3,
-              },
-            ]}
-            onPress={handleLike}
-          >
-            {hasLiked ? <ThemedLikeIcon /> : <ThemedUnlikeIcon />}
-            <AnimatedNumbers
-              includeComma
-              animateToNumber={likes || 0}
-              fontStyle={[
-                styles.actionText,
-                hasLiked && { color: SECONDARY_COLOR },
-              ]}
-            />
-          </TouchableOpacity>
-
           {/* Share Button */}
           <TouchableOpacity
             style={styles.actionButton}
@@ -286,24 +208,12 @@ const styles = StyleSheet.create((theme) => ({
   userInfo: {
     flex: 1,
   },
-  timeText: {
-    marginTop: theme.gap(1),
-  },
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: theme.gap(1),
-    gap: theme.gap(1),
-  },
+  timeText: {},
 
-  tag: {
-    borderRadius: theme.radii.small,
-    paddingHorizontal: theme.gap(0.5),
-  },
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     marginTop: theme.gap(1),
   },
 
@@ -322,13 +232,6 @@ const styles = StyleSheet.create((theme) => ({
     //fontFamily: theme.fonts.Regular,
     color: theme.colors.grey500,
   },
-  trending: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: SECONDARY_COLOR + "20",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 30,
-  },
-  menu: { marginLeft: 10 },
+
+  menu: {},
 }));

@@ -104,25 +104,13 @@ export const sendNotificationWithPush = internalMutation({
     type: v.union(
       v.literal("like"),
       v.literal("comment"),
-      v.literal("reply"),
-      v.literal("follow"),
-      v.literal("mention"),
-      v.literal("report_resolved"),
       v.literal("account_warning"),
-      v.literal("post_featured"),
       v.literal("system")
     ),
     title: v.string(),
     message: v.string(),
     entityId: v.optional(v.string()),
-    entityType: v.optional(
-      v.union(
-        v.literal("post"),
-        v.literal("comment"),
-        v.literal("reply"),
-        v.literal("user")
-      )
-    ),
+    entityType: v.optional(v.union(v.literal("post"), v.literal("comment"))),
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {

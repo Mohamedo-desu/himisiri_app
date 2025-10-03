@@ -72,8 +72,6 @@ export const getUserNotifications = query({
                 _id: sender._id,
                 userName: sender.userName,
                 imageUrl: sender.imageUrl,
-                age: sender.age,
-                gender: sender.gender,
               }
             : null,
         };
@@ -96,25 +94,13 @@ export const createNotification = mutation({
     type: v.union(
       v.literal("like"),
       v.literal("comment"),
-      v.literal("reply"),
-      v.literal("follow"),
-      v.literal("mention"),
-      v.literal("report_resolved"),
       v.literal("account_warning"),
-      v.literal("post_featured"),
       v.literal("system")
     ),
     title: v.string(),
     message: v.string(),
     entityId: v.optional(v.string()),
-    entityType: v.optional(
-      v.union(
-        v.literal("post"),
-        v.literal("comment"),
-        v.literal("reply"),
-        v.literal("user")
-      )
-    ),
+    entityType: v.optional(v.union(v.literal("post"), v.literal("comment"))),
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
@@ -126,13 +112,13 @@ export const createNotification = mutation({
     const notificationId = await ctx.db.insert("notifications", {
       userId: args.userId,
       senderId: args.senderId,
-      type: args.type,
       title: args.title,
       message: args.message,
       entityId: args.entityId,
       entityType: args.entityType,
       isRead: false,
       metadata: args.metadata,
+      type: args.type,
     });
 
     return notificationId;
@@ -252,8 +238,6 @@ export const deleteNotification = mutation({
 export const createLikeNotification = mutation({
   args: {
     postId: v.optional(v.string()),
-    commentId: v.optional(v.string()),
-    replyId: v.optional(v.string()),
     authorId: v.id("users"),
   },
   handler: async (ctx, args) => {
@@ -271,7 +255,7 @@ export const createLikeNotification = mutation({
       return null;
     }
 
-    let entityType: "post" | "comment" | "reply";
+    let entityType: "post";
     let entityId: string;
     let title: string;
     let message: string;
@@ -281,16 +265,6 @@ export const createLikeNotification = mutation({
       entityId = args.postId;
       title = "New Like";
       message = `${liker.userName} liked your post`;
-    } else if (args.commentId) {
-      entityType = "comment";
-      entityId = args.commentId;
-      title = "New Like";
-      message = `${liker.userName} liked your comment`;
-    } else if (args.replyId) {
-      entityType = "reply";
-      entityId = args.replyId;
-      title = "New Like";
-      message = `${liker.userName} liked your reply`;
     } else {
       return null;
     }
@@ -341,46 +315,6 @@ export const createCommentNotification = mutation({
       isRead: false,
       metadata: {
         commentId: args.commentId,
-      },
-    });
-  },
-});
-
-// Helper function to create reply notification
-export const createReplyNotification = mutation({
-  args: {
-    commentId: v.string(),
-    replyId: v.string(),
-    commentAuthorId: v.id("users"),
-    postId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const replier = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
-    if (!replier) {
-      return null;
-    }
-
-    return await ctx.db.insert("notifications", {
-      userId: args.commentAuthorId,
-      senderId: replier._id,
-      type: "reply",
-      title: "New Reply",
-      message: `${replier.userName} replied to your comment`,
-      entityId: args.commentId,
-      entityType: "comment",
-      isRead: false,
-      metadata: {
-        replyId: args.replyId,
-        postId: args.postId,
       },
     });
   },

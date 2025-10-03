@@ -6,12 +6,19 @@ import UserAvatar from "@/components/ui/UserAvatar";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import type { NOTIFICATION_TABLE } from "@/convex/schema";
+import { useUserStore } from "@/store/useUserStore";
 import { groupNotifications } from "@/utils/notification";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { format } from "date-fns";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { Alert, SectionList, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  DeviceEventEmitter,
+  SectionList,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import * as IconsSolid from "react-native-heroicons/solid";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { BADGE_COLOR } from "unistyles";
@@ -30,6 +37,7 @@ const NotificationsScreen = () => {
   const { theme } = useUnistyles();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabValue>("all");
+  const { currentUser } = useUserStore();
 
   // Convex queries and mutations (paginated)
   const {
@@ -54,18 +62,10 @@ const NotificationsScreen = () => {
         return <IconsSolid.HeartIcon size={18} color="#ef4444" />;
       case "comment":
         return <IconsSolid.ChatBubbleLeftIcon size={18} color="#3b82f6" />;
-      case "reply":
-        return <IconsSolid.ArrowUturnLeftIcon size={18} color="#8b5cf6" />;
-      case "follow":
-        return <IconsSolid.UserPlusIcon size={18} color="#10b981" />;
-      case "mention":
-        return <IconsSolid.AtSymbolIcon size={18} color="#f59e0b" />;
-      case "report_resolved":
-        return <IconsSolid.CheckCircleIcon size={18} color="#10b981" />;
+
       case "account_warning":
         return <IconsSolid.ExclamationTriangleIcon size={18} color="#f59e0b" />;
-      case "post_featured":
-        return <IconsSolid.StarIcon size={18} color="#fbbf24" />;
+
       case "system":
         return (
           <IconsSolid.InformationCircleIcon
@@ -77,10 +77,6 @@ const NotificationsScreen = () => {
         return <IconsSolid.BellIcon size={18} color={theme.colors.grey100} />;
     }
   };
-
-  // Relative time formatting removed; formatting handled via date-fns format below
-
-  // Individual mark-as-read handled inside press handler
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -112,18 +108,13 @@ const NotificationsScreen = () => {
           router.push(`/(main)/post/${notification.entityId}`);
         }
       } else if (
-        (notification.entityType === "comment" ||
-          notification.entityType === "reply") &&
+        notification.entityType === "comment" &&
         notification.metadata?.postId
       ) {
         let highlightId = notification.entityId;
         router.push(
           `/(main)/post/${notification.metadata.postId}?highlight=${highlightId}&type=${notification.entityType}`
         );
-      } else if (notification.entityType === "user" && notification.entityId) {
-        router.push(`/(main)/user/${notification.entityId}`);
-      } else if (notification.type === "follow" && notification.senderId) {
-        router.push(`/(main)/user/${notification.senderId}`);
       }
     } catch (error) {
       console.error("Error handling notification press:", error);
@@ -139,16 +130,35 @@ const NotificationsScreen = () => {
     () =>
       (notifications as NotificationWithSender[]).filter((notification) => {
         if (activeTab === "unread") return !notification.isRead;
-        if (activeTab === "mentions")
-          return (
-            notification.type === "mention" || notification.type === "reply"
-          );
+
         return true;
       }),
     [notifications, activeTab]
   );
 
   const sections = groupNotifications(filteredNotifications);
+
+  if (!currentUser) {
+    return (
+      <View style={styles.centeredScreen}>
+        <CustomText variant="label" semibold color="onSurface">
+          You’re not logged in
+        </CustomText>
+        <CustomText variant="small" color="grey500" style={{ marginTop: 6 }}>
+          Sign in to view and manage your profile
+        </CustomText>
+        <TouchableOpacity
+          style={[styles.primaryButton, { marginTop: 16 }]}
+          onPress={() => DeviceEventEmitter.emit("showLoginPrompt")}
+          activeOpacity={0.8}
+        >
+          <CustomText variant="label" semibold color="onPrimary">
+            Log in
+          </CustomText>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -273,12 +283,12 @@ const NotificationsScreen = () => {
                     {item.sender.imageUrl && (
                       <UserAvatar
                         imageUrl={item.sender.imageUrl as string}
-                        size={30}
+                        size={25}
                         userId={item.sender._id}
                         indicatorSize="small"
                       />
                     )}
-                    <CustomText variant="small" semibold>
+                    <CustomText variant="small" semibold numberOfLines={1}>
                       {item.sender.userName}
                     </CustomText>
                   </View>
@@ -313,6 +323,19 @@ const styles = StyleSheet.create((theme, rt) => ({
     backgroundColor: theme.colors.background,
     paddingHorizontal: theme.paddingHorizontal,
     paddingBottom: rt.insets.bottom + TAB_BAR_HEIGHT,
+  },
+  centeredScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.background,
+    padding: theme.paddingHorizontal,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.small,
+    paddingHorizontal: theme.gap(2),
+    paddingVertical: theme.gap(1.25),
   },
   header: {
     flexDirection: "row",
@@ -394,6 +417,8 @@ const styles = StyleSheet.create((theme, rt) => ({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    maxWidth: 100,
+    marginRight: theme.paddingHorizontal,
   },
 
   unreadDot: {

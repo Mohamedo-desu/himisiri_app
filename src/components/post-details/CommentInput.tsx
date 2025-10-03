@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { useScrollAwareInput } from "@/hooks/useScrollAwareInput";
 import { useUserStore } from "@/store/useUserStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
@@ -7,14 +8,21 @@ import React, { useRef, useState } from "react";
 import {
   Alert,
   DeviceEventEmitter,
-  Platform,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { PaperAirplaneIcon } from "react-native-heroicons/outline";
+import Animated from "react-native-reanimated";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import CustomText from "../ui/CustomText";
+
+type CommentInputProps = {
+  postId: Id<"posts">;
+  onCommentPosted?: () => void;
+  placeholder?: string;
+  scrollY: any;
+};
 
 // Themed send icon
 const ThemedSendIcon = withUnistyles(PaperAirplaneIcon, (theme) => ({
@@ -22,16 +30,11 @@ const ThemedSendIcon = withUnistyles(PaperAirplaneIcon, (theme) => ({
   color: theme.colors.onPrimary,
 }));
 
-type CommentInputProps = {
-  postId: Id<"posts">;
-  onCommentPosted?: () => void;
-  placeholder?: string;
-};
-
 const CommentInput = ({
   postId,
   onCommentPosted,
   placeholder = "Share your thoughts...",
+  scrollY,
 }: CommentInputProps) => {
   const { currentUser } = useUserStore();
   const [comment, setComment] = useState("");
@@ -39,43 +42,31 @@ const CommentInput = ({
   const [isFocused, setIsFocused] = useState(false);
 
   const textInputRef = useRef<TextInput>(null);
-
   const createComment = useMutation(api.comments.createComment);
+
+  const { animatedStyle } = useScrollAwareInput(scrollY, 200);
 
   const handleSubmit = async () => {
     if (!currentUser) {
       DeviceEventEmitter.emit("showLoginPrompt");
       return;
     }
-
     const trimmedComment = comment.trim();
     if (!trimmedComment) {
       Alert.alert("Empty Comment", "Please write something before posting.");
       return;
     }
-
     try {
       setIsPosting(true);
-
-      await createComment({
-        postId,
-        content: trimmedComment,
-      });
-
+      await createComment({ postId, content: trimmedComment });
       setComment("");
       textInputRef.current?.blur();
       onCommentPosted?.();
-
-      if (Platform.OS === "web") {
-        console.log("Comment posted successfully");
-      }
     } catch (error) {
       console.error("Error posting comment:", error);
       Alert.alert(
         "Error",
-        error instanceof Error
-          ? error.message
-          : "Failed to post comment. Please try again."
+        error instanceof Error ? error.message : "Failed to post comment."
       );
     } finally {
       setIsPosting(false);
@@ -85,10 +76,10 @@ const CommentInput = ({
   const isSubmitDisabled = isPosting || !comment.trim() || !currentUser;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, animatedStyle]}>
       {currentUser ? (
         <>
-          {/* --- Text Input at the top --- */}
+          {/* Input */}
           <View
             style={[
               styles.inputContainer,
@@ -110,7 +101,7 @@ const CommentInput = ({
             />
           </View>
 
-          {/* --- Send button at the bottom --- */}
+          {/* Send Button */}
           <TouchableOpacity
             disabled={isSubmitDisabled}
             onPress={handleSubmit}
@@ -159,7 +150,7 @@ const CommentInput = ({
           </View>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -177,6 +168,13 @@ const styles = StyleSheet.create((theme, rt) => {
       borderTopColor: theme.colors.grey200,
       padding: theme.paddingHorizontal,
       paddingBottom: rt.insets.bottom + 12,
+      position: "absolute",
+      elevation: 10,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1000,
+      borderBottomWidth: 1.5,
     },
 
     // --- Input field ---

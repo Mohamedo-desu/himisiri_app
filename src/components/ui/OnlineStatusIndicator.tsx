@@ -19,8 +19,7 @@ const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
   size = "medium",
   style,
 }) => {
-  const { isOnline, lastSeenAt, lastActiveAt, isLoading } =
-    useUserOnlineStatus(userId);
+  const { isOnline, lastSeenAt, isLoading } = useUserOnlineStatus(userId);
 
   // Don't render if no userId
   if (!userId) {
@@ -32,12 +31,6 @@ const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
 
     // For online users: Show lastActiveAt → "Active 2 minutes ago"
     if (isOnline) {
-      if (lastActiveAt) {
-        const timeAgo = formatDistanceToNowStrict(new Date(lastActiveAt), {
-          addSuffix: false,
-        });
-        return `Active ${timeAgo} ago`;
-      }
       return "Online";
     }
 

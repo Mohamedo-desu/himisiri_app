@@ -8,10 +8,7 @@ import { rateLimitedOptionalAuthQuery } from "./rateLimitedFunctions";
  */
 export const updateUserStatus = optionalAuthMutation({
   args: {
-    status: v.union(
-      v.literal("online"), // User is actively using the app
-      v.literal("offline") // User has gone offline
-    ),
+    status: v.union(v.literal("online"), v.literal("offline")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -33,12 +30,8 @@ export const updateUserStatus = optionalAuthMutation({
     if (currentUser.isOnline !== isOnline) {
       await ctx.db.patch(ctx.user._id, {
         isOnline,
-        lastActiveAt: isOnline ? now : currentUser.lastActiveAt,
         lastSeenAt: !isOnline ? now : currentUser.lastSeenAt,
       });
-      console.log(
-        `Updated user ${ctx.user._id} status to ${args.status} (isOnline: ${isOnline})`
-      );
     }
 
     return {
@@ -47,28 +40,6 @@ export const updateUserStatus = optionalAuthMutation({
       isOnline,
       timestamp: now,
     };
-  },
-});
-
-/**
- * Record user activity (heartbeat) - updates lastActiveAt if user is online
- */
-export const recordActivity = optionalAuthMutation({
-  args: {},
-  handler: async (ctx, args) => {
-    const now = Date.now();
-
-    // If no authenticated user, return early (no-op)
-    if (!ctx.user) {
-      return { success: false, timestamp: now };
-    }
-
-    // Only update lastActiveAt, don't change online status
-    await ctx.db.patch(ctx.user!._id, {
-      lastActiveAt: now,
-    });
-
-    return { success: true, timestamp: now };
   },
 });
 
@@ -89,7 +60,6 @@ export const getUserOnlineStatus = rateLimitedOptionalAuthQuery({
       userId: args.userId,
       isOnline: user.isOnline || false,
       lastSeenAt: user.lastSeenAt,
-      lastActiveAt: user.lastActiveAt,
     };
   },
 });
@@ -110,31 +80,5 @@ export const getMultipleUsersOnlineStatus = rateLimitedOptionalAuthQuery({
     }
 
     return results;
-  },
-});
-
-/**
- * Get list of online users
- */
-export const getOnlineUsers = rateLimitedOptionalAuthQuery({
-  args: {
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const limit = args.limit || 50;
-
-    // Get users marked as online
-    const onlineUsers = await ctx.db
-      .query("users")
-      .withIndex("by_online_status", (q: any) => q.eq("isOnline", true))
-      .take(limit);
-
-    return onlineUsers.map((user) => ({
-      _id: user._id,
-      userName: user.userName,
-      imageUrl: user.imageUrl,
-      isOnline: true,
-      lastActiveAt: user.lastActiveAt,
-    }));
   },
 });

@@ -1,6 +1,7 @@
 import CustomTabBar from "@/components/tabs/CustomTabBar";
 import CustomText from "@/components/ui/CustomText";
 import { APP_NAME, TAGLINE } from "@/constants/device";
+import { Fonts } from "@/constants/Fonts";
 import { api } from "@/convex/_generated/api";
 import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
 import { useQuery } from "convex/react";
@@ -82,6 +83,8 @@ const TabsLayout = () => {
     headerTintColor: theme.colors.onBackground,
     tabBarBadgeStyle: {
       backgroundColor: BADGE_COLOR,
+      fontFamily: Fonts.Regular,
+      fontSize: 12,
     },
     headerTitleAlign: "center",
     tabBarActiveTintColor: theme.colors.onPrimary,

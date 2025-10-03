@@ -5,11 +5,11 @@ const PROJECT_SLUG = "himisiri";
 const OWNER = "mohamedo-desu";
 
 // App production config
-const APP_NAME = "Himisiri";
+const APP_NAME = "Himisiri-Confess";
 const BUNDLE_IDENTIFIER = `com.mohamedodesu.${PROJECT_SLUG}`;
 const PACKAGE_NAME = `com.mohamedodesu.${PROJECT_SLUG}`;
 const ICON = "./assets/images/icon.png";
-const ADAPTIVE_ICON = "./assets/images/android-prod.png";
+const ADAPTIVE_ICON = "./assets/images/adaptive-icon.png";
 const SCHEME = PROJECT_SLUG;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
@@ -32,8 +32,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: "automatic",
     android: {
       adaptiveIcon: {
-        backgroundColor: "#E6F4FE",
-        foregroundImage: "./assets/images/android-icon-foreground.png",
+        backgroundColor: "#3C2A4D",
+        foregroundImage: adaptiveIcon,
         backgroundImage: "./assets/images/android-icon-background.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
@@ -87,11 +87,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "expo-splash-screen",
         {
           image: "./assets/images/splash-icon.png",
-          imageWidth: 200,
+          imageWidth: 100,
           resizeMode: "contain",
           backgroundColor: "#ffffff",
           dark: {
-            backgroundColor: "#000000",
+            backgroundColor: "#121212",
           },
         },
       ],
@@ -115,7 +115,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         "expo-notifications",
         {
           icon: "./assets/images/splash-icon.png",
-          color: "#4B50B2",
+          color: "#FF7F50",
           defaultChannel: "default",
           sounds: ["./assets/sounds/update.wav"],
           enableBackgroundRemoteNotifications: true,
@@ -137,6 +137,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
       "expo-router",
       "expo-font",
+      "expo-web-browser",
       "./plugins/scrollbar-color.js",
       "./plugins/customize.js",
     ],

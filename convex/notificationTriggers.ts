@@ -50,47 +50,6 @@ notificationTriggers.register("postLikes", async (ctx, change) => {
 });
 
 /**
- * Comment Like Notification Trigger
- * Sends notification when someone likes a comment
- */
-notificationTriggers.register("commentLikes", async (ctx, change) => {
-  if (change.operation === "insert" && change.newDoc) {
-    const like = change.newDoc;
-
-    // Get the comment to find the author
-    const comment = await ctx.db.get(like.commentId);
-    if (!comment) return;
-
-    // Don't notify if user liked their own comment
-    if (comment.authorId === like.userId) return;
-
-    // Get the liker's info
-    const liker = await ctx.db.get(like.userId);
-    if (!liker) return;
-
-    await ctx.scheduler.runAfter(
-      0,
-      internal.pushNotifications.sendNotificationWithPush,
-      {
-        userId: comment.authorId,
-        senderId: like.userId,
-        type: "like",
-        title: "New Like",
-        message: `${liker.userName} liked your comment`,
-        entityId: comment._id,
-        entityType: "comment",
-        metadata: {
-          commentContent:
-            comment.content?.substring(0, 50) +
-            (comment.content && comment.content.length > 50 ? "..." : ""),
-          postId: comment.postId,
-        },
-      }
-    );
-  }
-});
-
-/**
  * Comment Notification Trigger
  * Sends notification when someone comments on a post
  */
@@ -253,34 +212,6 @@ notificationTriggers.register("posts", async (ctx, change) => {
         );
       }
     }
-  }
-});
-
-/**
- * Follow Notification Trigger
- * Sends notification when someone follows a user
- */
-notificationTriggers.register("follows", async (ctx, change) => {
-  if (change.operation === "insert" && change.newDoc) {
-    const follow = change.newDoc;
-
-    // Get the follower's info
-    const follower = await ctx.db.get(follow.followerId);
-    if (!follower) return;
-
-    await ctx.scheduler.runAfter(
-      0,
-      internal.pushNotifications.sendNotificationWithPush,
-      {
-        userId: follow.followingId,
-        senderId: follow.followerId,
-        type: "follow",
-        title: "New Follower",
-        message: `${follower.userName} started following you`,
-        entityId: follow.followerId,
-        entityType: "user",
-      }
-    );
   }
 });
 

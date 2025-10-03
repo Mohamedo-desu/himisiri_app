@@ -1,30 +1,114 @@
 import CustomText from "@/components/ui/CustomText";
 import UserAvatar from "@/components/ui/UserAvatar";
+import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PushTokenService } from "@/services/pushTokenService";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { useUserStore } from "@/store/useUserStore";
 import { useAuth } from "@clerk/clerk-expo";
-import React, { useMemo } from "react";
-import { DeviceEventEmitter, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAction } from "convex/react";
+import { router } from "expo-router";
+import React from "react";
+import {
+  Alert,
+  DeviceEventEmitter,
+  ScrollView,
+  Switch,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { StyleSheet } from "react-native-unistyles";
+import { PRIMARY_COLOR } from "unistyles";
+
+const sections = [
+  {
+    title: "Legal & Privacy",
+    description: "Read our terms of service and privacy policy",
+    onPress: () => console.log("Navigate to Legal & Privacy"),
+  },
+];
 
 const ProfileScreen = () => {
   const { signOut } = useAuth();
   const { currentUser } = useUserStore();
-
-  const stats = useMemo(() => {
-    return {
-      posts: currentUser?.postsPublished || 0,
-      followers: currentUser?.followers || 0,
-      following: currentUser?.following || 0,
-    };
-  }, [currentUser]);
+  const { hideOffensiveWords, setHideOffensiveWords } = useSettingsStore();
+  const deleteAccountAction = useAction(api.users.initiateAccountDeletion);
 
   const handleLogout = async () => {
     try {
-      await PushTokenService.unregisterPushToken();
-      await signOut();
-    } catch (_) {}
+      Alert.alert("Log out", "Are you sure you want to log out?", [
+        {
+          text: "log out",
+          style: "cancel",
+          onPress: async () => {
+            try {
+              await PushTokenService.unregisterPushToken();
+              await signOut();
+            } catch (err) {
+              console.error("error logging out", err);
+              Alert.alert("Error", "Could not log out");
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "destructive",
+          isPreferred: true,
+        },
+      ]);
+    } catch (error) {
+      console.log("Logout error", error);
+    }
+  };
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await deleteAccountAction();
+
+              if (result.success) {
+                try {
+                  await signOut();
+                } catch (signOutError) {
+                  console.error("Error signing out:", signOutError);
+                }
+
+                router.replace("/(main)/(tabs)");
+
+                setTimeout(() => {
+                  Alert.alert(
+                    "Account Deleted",
+                    "Your account has been successfully deleted."
+                  );
+                }, 500);
+              } else {
+                throw new Error("Deletion failed");
+              }
+            } catch (error) {
+              console.error("Error deleting account:", error);
+
+              let errorMsg = "Failed to delete account.";
+              if (error instanceof Error) {
+                errorMsg += " " + error.message;
+              }
+
+              Alert.alert("Error", errorMsg);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (!currentUser) {
@@ -33,11 +117,11 @@ const ProfileScreen = () => {
         <CustomText variant="label" semibold color="onSurface">
           You’re not logged in
         </CustomText>
-        <CustomText variant="small" color="grey500" style={{ marginTop: 6 }}>
+        <CustomText variant="small" color="grey500" style={styles.subtitle}>
           Sign in to view and manage your profile
         </CustomText>
         <TouchableOpacity
-          style={[styles.primaryButton, { marginTop: 16 }]}
+          style={styles.primaryButton}
           onPress={() => DeviceEventEmitter.emit("showLoginPrompt")}
           activeOpacity={0.8}
         >
@@ -50,98 +134,116 @@ const ProfileScreen = () => {
   }
 
   return (
-    <View style={styles.screen}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.scrollContent}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.avatarWrapper}>
-          <UserAvatar
-            imageUrl={(currentUser.imageUrl as unknown as string) || ""}
-            size={86}
-            userId={currentUser._id as Id<"users">}
-            indicatorSize="large"
+        <UserAvatar
+          imageUrl={(currentUser.imageUrl as unknown as string) || ""}
+          size={96}
+          userId={currentUser._id as Id<"users">}
+          indicatorSize="large"
+        />
+        <CustomText
+          variant="subtitle1"
+          bold
+          color="onSurface"
+          style={styles.username}
+        >
+          {currentUser.userName}
+        </CustomText>
+      </View>
+
+      {/* Settings */}
+      <View style={styles.section}>
+        <CustomText
+          variant="label"
+          semibold
+          color="grey700"
+          style={styles.sectionTitle}
+        >
+          Settings
+        </CustomText>
+
+        {/* Integrated Hide Offensive Words Toggle */}
+        <View style={styles.settingToggle}>
+          <View style={styles.settingInfo}>
+            <CustomText variant="label" semibold>
+              Hide Offensive Words
+            </CustomText>
+            <CustomText
+              style={styles.settingDescription}
+              variant="small"
+              color="grey500"
+            >
+              Automatically replace strong language with symbols (e.g. ****).
+            </CustomText>
+          </View>
+          <Switch
+            value={hideOffensiveWords}
+            onValueChange={setHideOffensiveWords}
+            thumbColor={PRIMARY_COLOR}
+            trackColor={{ true: PRIMARY_COLOR, false: "gray" }}
           />
         </View>
-        <View style={styles.headerInfo}>
-          <CustomText variant="subtitle1" bold color="onSurface">
-            {currentUser.userName}
-          </CustomText>
-          <CustomText variant="subtitle1" bold color="grey500">
-            {currentUser.age}
-          </CustomText>
-          <CustomText variant="subtitle1" bold color="grey500">
-            {currentUser.gender}
-          </CustomText>
-        </View>
+
+        {/* Other settings */}
+        {sections.map((section, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.settingItem}
+            onPress={section.onPress}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingInfo}>
+              <CustomText style={styles.settingLabel} variant="label" semibold>
+                {section.title}
+              </CustomText>
+              <CustomText style={styles.settingDescription} variant="small">
+                {section.description}
+              </CustomText>
+            </View>
+            <Ionicons
+              name="chevron-forward-outline"
+              size={20}
+              color={PRIMARY_COLOR}
+            />
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* Stats */}
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <CustomText variant="subtitle1" semibold color="onSurface">
-            {stats.posts}
-          </CustomText>
-          <CustomText variant="small" color="grey500">
-            Posts
-          </CustomText>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.statItem}>
-          <CustomText variant="subtitle1" semibold color="onSurface">
-            {stats.followers}
-          </CustomText>
-          <CustomText variant="small" color="grey500">
-            Followers
-          </CustomText>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.statItem}>
-          <CustomText variant="subtitle1" semibold color="onSurface">
-            {stats.following}
-          </CustomText>
-          <CustomText variant="small" color="grey500">
-            Following
-          </CustomText>
-        </View>
-      </View>
-
-      {/* Bio */}
-      {(currentUser.bio || currentUser.thoughts) && (
-        <View style={styles.bioCard}>
-          {currentUser.bio ? (
-            <CustomText variant="label" color="onSurface">
-              {currentUser.bio}
-            </CustomText>
-          ) : null}
-          {currentUser.thoughts ? (
-            <CustomText
-              variant="small"
-              color="grey600"
-              style={{ marginTop: 6 }}
-            >
-              {currentUser.thoughts}
-            </CustomText>
-          ) : null}
-        </View>
-      )}
-
-      {/* Actions */}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.85}>
+      {/* Account actions */}
+      <View style={styles.section}>
+        <CustomText
+          variant="label"
+          semibold
+          color="grey700"
+          style={styles.sectionTitle}
+        >
+          Account
+        </CustomText>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          activeOpacity={0.85}
+          onPress={handleLogout}
+        >
           <CustomText variant="label" semibold color="primary">
-            Edit Profile
+            Log out
           </CustomText>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.destructiveButton}
           activeOpacity={0.85}
-          onPress={handleLogout}
+          onPress={handleDeleteAccount}
         >
-          <CustomText variant={{} as any} semibold color="onPrimary">
-            Log out
+          <CustomText variant="label" semibold color="onPrimary">
+            Delete Account
           </CustomText>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -151,8 +253,10 @@ const styles = StyleSheet.create((theme) => ({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  scrollContent: {
     padding: theme.paddingHorizontal,
-    paddingTop: theme.gap(2),
+    paddingBottom: theme.gap(6),
   },
   centeredScreen: {
     flex: 1,
@@ -161,77 +265,80 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.background,
     padding: theme.paddingHorizontal,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.gap(2),
-  },
-  avatarWrapper: {
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  headerInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  statusRow: {
+  subtitle: {
     marginTop: 6,
+    textAlign: "center",
   },
-  statsBar: {
-    marginTop: theme.gap(2),
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.regular,
-    borderWidth: 1,
-    borderColor: theme.colors.grey200,
-    flexDirection: "row",
+  header: {
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: theme.gap(2),
+    marginBottom: theme.gap(4),
   },
-  statItem: {
-    alignItems: "center",
-    flex: 1,
+  username: {
+    marginTop: theme.gap(1.5),
   },
-  divider: {
-    width: 1,
-    alignSelf: "stretch",
-    backgroundColor: theme.colors.grey200,
-    marginHorizontal: theme.gap(2),
+  section: {
+    marginTop: theme.gap(3),
   },
-  bioCard: {
-    marginTop: theme.gap(2),
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.regular,
-    borderWidth: 1,
-    borderColor: theme.colors.grey200,
-    padding: theme.gap(2),
-  },
-  actionsRow: {
-    marginTop: theme.gap(2),
-    flexDirection: "row",
-    gap: theme.gap(1),
+  sectionTitle: {
+    marginBottom: theme.gap(1.5),
   },
   primaryButton: {
     backgroundColor: theme.colors.primary,
-    borderRadius: theme.radii.small,
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1.25),
+    borderRadius: theme.radii.regular,
+    paddingHorizontal: theme.gap(3),
+    paddingVertical: theme.gap(1.5),
+    marginTop: 16,
   },
   secondaryButton: {
-    flex: 1,
-    backgroundColor: theme.colors.primary + "15",
-    borderRadius: theme.radii.small,
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1.25),
-    alignItems: "center",
+    marginTop: theme.gap(1.5),
     borderWidth: 1,
-    borderColor: theme.colors.primary + "40",
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + "15",
+    borderRadius: theme.radii.regular,
+    paddingHorizontal: theme.gap(3),
+    paddingVertical: theme.gap(1.5),
+    alignItems: "center",
   },
   destructiveButton: {
+    marginTop: theme.gap(1.5),
     backgroundColor: theme.colors.error,
-    borderRadius: theme.radii.small,
-    paddingHorizontal: theme.gap(2),
-    paddingVertical: theme.gap(1.25),
+    borderRadius: theme.radii.regular,
+    paddingHorizontal: theme.gap(3),
+    paddingVertical: theme.gap(1.5),
     alignItems: "center",
+  },
+  settingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: theme.gap(1.75),
+    paddingHorizontal: theme.gap(2),
+    borderRadius: theme.radii.regular,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+    backgroundColor: theme.colors.surface,
+    marginBottom: theme.gap(1.25),
+  },
+  settingToggle: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: theme.gap(1.75),
+    paddingHorizontal: theme.gap(2),
+    borderRadius: theme.radii.regular,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+    backgroundColor: theme.colors.surface,
+    marginBottom: theme.gap(1.25),
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: theme.gap(2),
+  },
+  settingLabel: {
+    marginBottom: theme.gap(0.5),
+  },
+  settingDescription: {
+    color: theme.colors.grey600,
   },
 }));

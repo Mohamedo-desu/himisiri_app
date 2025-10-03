@@ -1,8 +1,10 @@
 import PostCard from "@/components/home-screen/PostCard";
+import ScrollToTopFab from "@/components/home-screen/ScrollToTopFab";
 import CommentCard from "@/components/post-details/CommentCard";
 import CommentInput from "@/components/post-details/CommentInput";
 import CommentListEmptyComponent from "@/components/post-details/CommentListEmptyComponent";
 import CommentListFooterComponent from "@/components/post-details/CommentListFooterComponent";
+import PostStickyHeader from "@/components/post-details/PostStickyHeader";
 import CustomText from "@/components/ui/CustomText";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -15,6 +17,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   RefreshControl,
   TouchableOpacity,
   View,
@@ -24,6 +28,7 @@ import {
   DocumentIcon,
   ExclamationCircleIcon,
 } from "react-native-heroicons/outline";
+import { useSharedValue } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 import { BADGE_COLOR, PRIMARY_COLOR } from "unistyles";
 
@@ -40,6 +45,15 @@ const PostDetailsScreen = () => {
   >(highlight || null);
   const flatListRef = useRef<LegendListRef>(null);
 
+  const scrollY = useSharedValue(0);
+  const scrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  };
+  const scrollToTop = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
   // Fetch the post details
   const post = useQuery(
     api.posts.getPostById,
@@ -109,29 +123,15 @@ const PostDetailsScreen = () => {
     }, 100);
   }, []);
 
-  const handleCommentUpdated = useCallback(() => {
-    // Refresh the comments list when a comment is updated or deleted
-    // The usePaginatedQuery will automatically refetch
-  }, []);
-
-  const handleCommentPress = useCallback((commentId: string) => {
-    Alert.alert(
-      "Feature Coming Soon",
-      "Comment details feature is coming soon!"
-    );
-  }, []);
-
   const renderComment = useCallback(
     ({ item: comment }: { item: any }) => (
       <CommentCard
         comment={comment}
         postId={id as any}
-        onPress={() => handleCommentPress(comment._id)}
         isHighlighted={highlightedCommentId === comment._id}
-        onCommentUpdated={handleCommentUpdated}
       />
     ),
-    [handleCommentPress, highlightedCommentId, id, handleCommentUpdated]
+    [highlightedCommentId, id]
   );
 
   const renderHeader = () => {
@@ -165,10 +165,10 @@ const PostDetailsScreen = () => {
       <View style={styles.errorContainer}>
         <View style={styles.errorContent}>
           <View style={styles.errorIconContainer}>
-            <ExclamationCircleIcon size={64} color={BADGE_COLOR} />
+            <ExclamationCircleIcon size={35} color={BADGE_COLOR} />
           </View>
           <CustomText
-            variant="h2"
+            variant="label"
             fontWeight="bold"
             color="error"
             style={styles.errorTitle}
@@ -176,7 +176,7 @@ const PostDetailsScreen = () => {
             Invalid Post
           </CustomText>
           <CustomText
-            variant="body1"
+            variant="small"
             color="muted"
             textAlign="center"
             style={styles.errorDescription}
@@ -188,7 +188,7 @@ const PostDetailsScreen = () => {
             onPress={() => router.back()}
           >
             <ArrowLeftIcon size={20} color={PRIMARY_COLOR} />
-            <CustomText variant="body1" fontWeight="semibold" color="primary">
+            <CustomText variant="label" fontWeight="semibold" color="primary">
               Go Back
             </CustomText>
           </TouchableOpacity>
@@ -201,16 +201,16 @@ const PostDetailsScreen = () => {
     return (
       <View style={styles.errorContainer}>
         <View style={styles.errorContent}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+          <ActivityIndicator size="small" color={PRIMARY_COLOR} />
           <CustomText
-            variant="h4"
+            variant="label"
             fontWeight="semibold"
             color="onBackground"
-            style={styles.errorTitle}
+            textAlign="center"
           >
             Loading Post
           </CustomText>
-          <CustomText variant="body2" color="muted" textAlign="center">
+          <CustomText variant="small" color="muted" textAlign="center">
             Please wait while we fetch the post details...
           </CustomText>
         </View>
@@ -223,22 +223,17 @@ const PostDetailsScreen = () => {
       <View style={styles.errorContainer}>
         <View style={styles.errorContent}>
           <View style={styles.errorIconContainer}>
-            <DocumentIcon size={64} color={BADGE_COLOR} />
+            <DocumentIcon size={35} color={BADGE_COLOR} />
           </View>
           <CustomText
-            variant="h2"
+            variant="label"
             fontWeight="bold"
             color="error"
-            style={styles.errorTitle}
+            textAlign="center"
           >
             Post Not Found
           </CustomText>
-          <CustomText
-            variant="body1"
-            color="muted"
-            textAlign="center"
-            style={styles.errorDescription}
-          >
+          <CustomText variant="small" color="muted" textAlign="center">
             This post may have been deleted or you don&apos;t have permission to
             view it.
           </CustomText>
@@ -247,7 +242,7 @@ const PostDetailsScreen = () => {
             onPress={() => router.back()}
           >
             <ArrowLeftIcon size={20} color={PRIMARY_COLOR} />
-            <CustomText variant="body1" fontWeight="semibold" color="primary">
+            <CustomText variant="label" fontWeight="semibold" color="primary">
               Go Back
             </CustomText>
           </TouchableOpacity>
@@ -257,6 +252,8 @@ const PostDetailsScreen = () => {
   }
   return (
     <View style={styles.container}>
+      <PostStickyHeader post={post} scrollY={scrollY} />
+
       <AnimatedLegendList
         ref={flatListRef}
         style={styles.flatList}
@@ -285,16 +282,19 @@ const PostDetailsScreen = () => {
             loadMore(10);
           }
         }}
+        scrollEventThrottle={8}
+        onScroll={scrollHandler}
         onEndReachedThreshold={0.1}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       />
-      {id && (
-        <CommentInput
-          postId={id as Id<"posts">}
-          onCommentPosted={handleCommentPosted}
-        />
-      )}
+
+      <CommentInput
+        postId={id as Id<"posts">}
+        onCommentPosted={handleCommentPosted}
+        scrollY={scrollY}
+      />
+      <ScrollToTopFab onPress={scrollToTop} scrollY={scrollY} />
     </View>
   );
 };

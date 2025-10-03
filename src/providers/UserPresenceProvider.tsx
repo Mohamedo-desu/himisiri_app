@@ -1,10 +1,8 @@
 import { useUserPresence } from "@/hooks/useUserPresence";
-import { useAuth } from "@clerk/clerk-expo";
-import React, { createContext, useContext, useEffect } from "react";
+import React, { createContext, useContext } from "react";
 
 interface UserPresenceContextType {
   isOnline: boolean;
-  recordActivity: () => void;
 }
 
 const UserPresenceContext = createContext<UserPresenceContextType | null>(null);
@@ -16,26 +14,13 @@ interface UserPresenceProviderProps {
 export const UserPresenceProvider: React.FC<UserPresenceProviderProps> = ({
   children,
 }) => {
-  const { isSignedIn } = useAuth();
   const presenceHook = useUserPresence();
 
   // Safely destructure with fallbacks
-  const { isOnline = false, recordActivity = () => {} } = presenceHook || {};
-
-  // Auto-record activity on touch events
-  useEffect(() => {
-    try {
-      if (isSignedIn && recordActivity) {
-        recordActivity();
-      }
-    } catch (error) {
-      console.error("Error recording activity:", error);
-    }
-  }, [isSignedIn, recordActivity]);
+  const { isOnline = false } = presenceHook || {};
 
   const contextValue: UserPresenceContextType = {
     isOnline: !!isOnline,
-    recordActivity,
   };
 
   return (

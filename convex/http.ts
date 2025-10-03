@@ -83,23 +83,13 @@ http.route({
           translateY: 5,
         }).toString();
 
-        const bio = `Just a ${faker.word.adjective()} ${faker.animal.type()} exploring ${faker.word.noun()}`;
-        const age = faker.number.int({ min: 18, max: 45 });
-        const gender = faker.helpers.arrayElement(["male", "female", "other"]);
-
         // 5. Create the user
         await ctx.runMutation(internal.users.createUser, {
           emailAddress: email,
           clerkId: id,
           userName,
           imageUrl: avatar,
-          emailVerified: true,
-          followers: 0,
-          following: 0,
           postsPublished: 0,
-          bio,
-          age,
-          gender,
         });
       } catch (error) {
         console.log("Error creating user", error);
@@ -109,7 +99,7 @@ http.route({
       }
     } else if (eventType === "user.deleted") {
       const { id } = evt.data;
-      await ctx.runMutation(internal.users.deleteAccountByClerkId, {
+      await ctx.runMutation(internal.triggers.deleteUserCascade, {
         clerkId: id,
       });
     }

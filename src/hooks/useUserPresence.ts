@@ -19,7 +19,6 @@ export const useUserPresence = () => {
 
   // Simplified mutations - only update user fields
   const updateUserStatus = useMutation(api.userPresence.updateUserStatus);
-  const recordActivity = useMutation(api.userPresence.recordActivity);
 
   /**
    * Update user online status
@@ -127,23 +126,9 @@ export const useUserPresence = () => {
     };
   }, [isSignedIn, updateUserStatus]);
 
-  /**
-   * Record user activity (for heartbeat)
-   */
-  const recordUserActivity = useCallback(async () => {
-    if (isSignedIn && appState === "active") {
-      try {
-        await recordActivity();
-      } catch (error) {
-        console.error("Failed to record activity:", error);
-      }
-    }
-  }, [isSignedIn, appState, recordActivity]);
-
   return {
     isOnline: !!(isOnline && isSignedIn),
     appState,
-    recordActivity: recordUserActivity,
   };
 };
 
@@ -159,36 +144,6 @@ export const useUserOnlineStatus = (userId: Id<"users"> | null | undefined) => {
   return {
     isOnline: onlineStatus?.isOnline || false,
     lastSeenAt: onlineStatus?.lastSeenAt,
-    lastActiveAt: onlineStatus?.lastActiveAt,
     isLoading: onlineStatus === undefined,
-  };
-};
-
-/**
- * Hook to get online status of multiple users
- */
-export const useMultipleUsersOnlineStatus = (userIds: Id<"users">[]) => {
-  const onlineStatuses = useQuery(
-    api.userPresence.getMultipleUsersOnlineStatus,
-    userIds.length > 0 ? { userIds } : "skip"
-  );
-
-  return {
-    statuses: onlineStatuses || {},
-    isLoading: onlineStatuses === undefined,
-  };
-};
-
-/**
- * Hook to get list of online users
- */
-export const useOnlineUsers = (limit?: number) => {
-  const onlineUsers = useQuery(api.userPresence.getOnlineUsers, {
-    limit: limit || 50,
-  });
-
-  return {
-    users: onlineUsers || [],
-    isLoading: onlineUsers === undefined,
   };
 };

@@ -19,7 +19,7 @@ const ThemedDeleteIcon = withUnistyles(IconsSolid.TrashIcon, (theme) => ({
 
 const MenuOptionsModal = ({ showMenu, onMenuRequestClose, post }) => {
   const updatePost = useMutation(api.posts.updatePost);
-  const deletePost = useMutation(api.posts.deletePost);
+  const deletePost = useMutation(api.triggers.deletePostCascade);
 
   const handleDeletePost = () => {
     onMenuRequestClose();

@@ -28,22 +28,23 @@ export const useLoginPrompt = (
   const currentDelayRef = useRef(delaySeconds);
   const { setCurrentUser } = useUserStore();
 
-  // Real-time query that automatically updates when server data changes
+  // Convex user lookup (based on Clerk ID)
   const currentUser = useQuery(
     api.users.getUserByClerkId,
     userId ? { clerkId: userId as Id<"users"> } : "skip"
   );
 
-  // Update user store whenever currentUser changes
+  // Keep global store in sync
   useEffect(() => {
     if (currentUser) {
       setCurrentUser(currentUser);
     }
   }, [currentUser, setCurrentUser]);
 
-  // Handle authenticated actions
+  const isAuthenticated = !!userId && !!currentUser;
+
   const handleAuthRequired = (action: () => void) => {
-    if (!userId || !currentUser) {
+    if (!isAuthenticated) {
       setShowLoginPrompt(true);
       return false;
     }
@@ -52,12 +53,15 @@ export const useLoginPrompt = (
   };
 
   const startTimer = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      if (!userId && isLoaded && !hasShownRef.current && !isGuestRef.current) {
+      if (
+        !isAuthenticated &&
+        isLoaded &&
+        !hasShownRef.current &&
+        !isGuestRef.current
+      ) {
         setShowLoginPrompt(true);
         hasShownRef.current = true;
       }
@@ -67,34 +71,21 @@ export const useLoginPrompt = (
   const signInAsGuest = () => {
     isGuestRef.current = true;
     setShowLoginPrompt(false);
-    // Clear any existing timers
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    if (reappearTimerRef.current) {
-      clearTimeout(reappearTimerRef.current);
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (reappearTimerRef.current) clearTimeout(reappearTimerRef.current);
   };
 
   const dismissLoginPrompt = () => {
-    // Only allow dismissal if user is authenticated
-    if (userId) {
+    if (isAuthenticated) {
       setShowLoginPrompt(false);
     } else {
-      // For non-authenticated users, hide the prompt temporarily and show it again after double the delay
       setShowLoginPrompt(false);
-
-      // Add 15 seconds to the previous delay
       currentDelayRef.current = currentDelayRef.current + 15;
 
-      // Clear any existing reappear timer
-      if (reappearTimerRef.current) {
-        clearTimeout(reappearTimerRef.current);
-      }
+      if (reappearTimerRef.current) clearTimeout(reappearTimerRef.current);
 
-      // Set new reappear timer with increased delay
       reappearTimerRef.current = setTimeout(() => {
-        if (!userId && isLoaded && !isGuestRef.current) {
+        if (!isAuthenticated && isLoaded && !isGuestRef.current) {
           setShowLoginPrompt(true);
         }
       }, currentDelayRef.current * 1000);
@@ -102,59 +93,40 @@ export const useLoginPrompt = (
   };
 
   const resetPromptState = () => {
-    // Reset all state to initial values
     hasShownRef.current = false;
     isGuestRef.current = false;
     currentDelayRef.current = delaySeconds;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    if (reappearTimerRef.current) {
-      clearTimeout(reappearTimerRef.current);
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (reappearTimerRef.current) clearTimeout(reappearTimerRef.current);
     setShowLoginPrompt(false);
     startTimer();
   };
 
   const resetTimer = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    if (reappearTimerRef.current) {
-      clearTimeout(reappearTimerRef.current);
-    }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (reappearTimerRef.current) clearTimeout(reappearTimerRef.current);
     hasShownRef.current = false;
     setShowLoginPrompt(false);
     startTimer();
   };
 
   useEffect(() => {
-    // Only start timer if user is not authenticated and auth is loaded
-    if (!userId && isLoaded && !hasShownRef.current) {
+    if (!isAuthenticated && isLoaded && !hasShownRef.current) {
       startTimer();
     }
 
-    // Clear timer if user becomes authenticated
-    if (userId) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      if (reappearTimerRef.current) {
-        clearTimeout(reappearTimerRef.current);
-      }
+    if (isAuthenticated) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (reappearTimerRef.current) clearTimeout(reappearTimerRef.current);
       setShowLoginPrompt(false);
       hasShownRef.current = false;
     }
 
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      if (reappearTimerRef.current) {
-        clearTimeout(reappearTimerRef.current);
-      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (reappearTimerRef.current) clearTimeout(reappearTimerRef.current);
     };
-  }, [userId, isLoaded, delaySeconds]);
+  }, [isAuthenticated, isLoaded, delaySeconds]);
 
   return {
     showLoginPrompt,
@@ -164,6 +136,6 @@ export const useLoginPrompt = (
     signInAsGuest,
     resetPromptState,
     handleAuthRequired,
-    isAuthenticated: !!userId && !!currentUser,
+    isAuthenticated,
   };
 };

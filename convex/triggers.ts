@@ -1,235 +1,257 @@
+// convex/triggers.ts
 import {
   customCtx,
   customMutation,
 } from "convex-helpers/server/customFunctions";
 import { Triggers } from "convex-helpers/server/triggers";
+import { v } from "convex/values";
 import { DataModel } from "./_generated/dataModel";
-import { mutation as rawMutation } from "./_generated/server";
+import {
+  internalMutation as rawInternalMutation,
+  mutation as rawMutation,
+} from "./_generated/server";
+import { getAuthenticatedUser } from "./users";
 
+// Create triggers instance
 const triggers = new Triggers<DataModel>();
 
 /**
- * User Deletion Trigger
- *
- * When a user is deleted, this trigger:
- * 1. Deletes all user-created content (posts, comments, replies)
- * 2. Deletes all user interactions (likes, push tokens)
- * 3. Deletes user-initiated reports (preserving reports against the user where possible)
- * 4. Updates user counts
+ * USER DELETION CASCADE
  */
 triggers.register("users", async (ctx, change) => {
   if (change.operation === "delete" && change.oldDoc) {
     const userId = change.id;
-    const deletedUser = change.oldDoc;
+    console.log(`Starting cascade delete for user ${userId}`);
 
-    console.log(
-      `Starting user deletion cascade for user ${userId}: ${deletedUser.userName}`
-    );
-
-    // =====================================================
-    // DELETE USER-CREATED CONTENT
-    // =====================================================
-
-    // 1. Delete all posts/confessions by this user
-    const userPosts = await ctx.db
+    // Delete posts authored by the user (triggers post cascade)
+    const posts = await ctx.db
       .query("posts")
       .withIndex("by_author", (q) => q.eq("authorId", userId))
       .collect();
-
-    for (const post of userPosts) {
+    for (const post of posts) {
       await ctx.db.delete(post._id);
     }
-    console.log(`Deleted ${userPosts.length} posts for user ${userId}`);
 
-    // 2. Delete all comments by this user
-    const userComments = await ctx.db
+    // Delete comments authored by the user
+    const comments = await ctx.db
       .query("comments")
       .withIndex("by_author", (q) => q.eq("authorId", userId))
       .collect();
-
-    for (const comment of userComments) {
+    for (const comment of comments) {
       await ctx.db.delete(comment._id);
     }
-    console.log(`Deleted ${userComments.length} comments for user ${userId}`);
 
-    // =====================================================
-    // DELETE USER INTERACTIONS
-    // =====================================================
-
-    // 4. Delete all post likes by this user
-    const userPostLikes = await ctx.db
+    // Delete likes by the user
+    const likes = await ctx.db
       .query("postLikes")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-
-    for (const like of userPostLikes) {
+    for (const like of likes) {
       await ctx.db.delete(like._id);
     }
-    console.log(
-      `Deleted ${userPostLikes.length} post likes for user ${userId}`
-    );
 
-    // 5. Delete all comment likes by this user
-    const userCommentLikes = await ctx.db
-      .query("commentLikes")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-
-    for (const like of userCommentLikes) {
-      await ctx.db.delete(like._id);
-    }
-    console.log(
-      `Deleted ${userCommentLikes.length} comment likes for user ${userId}`
-    );
-
-    // 7. Delete all push tokens for this user
-    const userPushTokens = await ctx.db
+    // Delete push tokens for the user
+    const tokens = await ctx.db
       .query("pushTokens")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
-
-    for (const token of userPushTokens) {
+    for (const token of tokens) {
       await ctx.db.delete(token._id);
     }
-    console.log(
-      `Deleted ${userPushTokens.length} push tokens for user ${userId}`
-    );
 
-    // =====================================================
-    // HANDLE REPORT TABLES - DELETE USER-INITIATED REPORTS
-    // =====================================================
+    // Delete notifications received
+    const notifsReceived = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    for (const notif of notifsReceived) {
+      await ctx.db.delete(notif._id);
+    }
 
-    // =====================================================
-    // UPDATE USER COUNTS
-    // =====================================================
+    // Delete notifications sent
+    const notifsSent = await ctx.db
+      .query("notifications")
+      .withIndex("by_sender", (q) => q.eq("senderId", userId))
+      .collect();
+    for (const notif of notifsSent) {
+      await ctx.db.delete(notif._id);
+    }
 
-    // 13. Decrement total user count
+    // Decrement global user count
     const userCount = await ctx.db.query("userCounts").first();
     if (userCount) {
       await ctx.db.patch(userCount._id, {
         count: Math.max(0, userCount.count - 1),
       });
-      console.log(`Decremented user count to ${userCount.count - 1}`);
     }
 
-    console.log(
-      `User deletion cascade completed for user ${userId}: ${deletedUser.userName}`
-    );
+    console.log(`Cascade delete completed for user ${userId}`);
   }
 });
 
 /**
- * Post Deletion Trigger
- *
- * When a post is deleted, this trigger:
- * 1. Deletes all related comments and replies
- * 2. Deletes all related likes
- * 3. Deletes all related reports
+ * POST DELETION CASCADE
  */
 triggers.register("posts", async (ctx, change) => {
   if (change.operation === "delete" && change.oldDoc) {
     const postId = change.id;
-    const deletedPost = change.oldDoc;
+    console.log(`Starting cascade delete for post ${postId}`);
 
-    console.log(`Starting post deletion cascade for post ${postId}`);
-
-    // 1. Delete all comments on this post (which will cascade to replies)
-    const postComments = await ctx.db
+    // Delete comments on this post
+    const comments = await ctx.db
       .query("comments")
       .withIndex("by_post", (q) => q.eq("postId", postId))
       .collect();
-
-    for (const comment of postComments) {
+    for (const comment of comments) {
       await ctx.db.delete(comment._id);
     }
-    console.log(`Deleted ${postComments.length} comments for post ${postId}`);
 
-    // 2. Delete all likes on this post
-    const postLikes = await ctx.db
+    // Delete likes on this post
+    const likes = await ctx.db
       .query("postLikes")
       .withIndex("by_post", (q) => q.eq("postId", postId))
       .collect();
-
-    for (const like of postLikes) {
+    for (const like of likes) {
       await ctx.db.delete(like._id);
     }
-    console.log(`Deleted ${postLikes.length} likes for post ${postId}`);
 
-    console.log(`Post deletion cascade completed for post ${postId}`);
+    // Delete notifications related to this post
+    const notifs = await ctx.db
+      .query("notifications")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityId", postId).eq("entityType", "post")
+      )
+      .collect();
+    for (const notif of notifs) {
+      await ctx.db.delete(notif._id);
+    }
+
+    console.log(`Cascade delete completed for post ${postId}`);
   }
 });
 
 /**
- * Comment Deletion Trigger
- *
- * When a comment is deleted, this trigger:
- * 1. Deletes all related replies
- * 2. Deletes all related likes
- * 3. Deletes all related reports
- * 4. Decrements the parent post's comment count
+ * COMMENT DELETION CASCADE
  */
 triggers.register("comments", async (ctx, change) => {
   if (change.operation === "delete" && change.oldDoc) {
     const commentId = change.id;
-    const deletedComment = change.oldDoc;
-    const postId = deletedComment.postId;
+    const postId = change.oldDoc.postId;
 
-    console.log(`Starting comment deletion cascade for comment ${commentId}`);
+    console.log(`Starting cascade delete for comment ${commentId}`);
 
-    // 2. Delete all likes on this comment
-    const commentLikes = await ctx.db
-      .query("commentLikes")
-      .withIndex("by_comment", (q) => q.eq("commentId", commentId))
-      .collect();
-
-    for (const like of commentLikes) {
-      await ctx.db.delete(like._id);
-    }
-    console.log(
-      `Deleted ${commentLikes.length} likes for comment ${commentId}`
-    );
-
-    // 4. Decrement parent post's comment count
-    const parentPost = await ctx.db.get(postId);
-    if (parentPost) {
+    // Decrement parent post comment count
+    const post = await ctx.db.get(postId);
+    if (post) {
       await ctx.db.patch(postId, {
-        commentsCount: Math.max(0, parentPost.commentsCount - 1),
+        commentsCount: Math.max(0, post.commentsCount - 1),
       });
-      console.log(`Decremented comment count for post ${postId}`);
     }
 
-    console.log(`Comment deletion cascade completed for comment ${commentId}`);
+    // Delete notifications related to this comment
+    const notifs = await ctx.db
+      .query("notifications")
+      .withIndex("by_entity", (q) =>
+        q.eq("entityId", commentId).eq("entityType", "comment")
+      )
+      .collect();
+    for (const notif of notifs) {
+      await ctx.db.delete(notif._id);
+    }
+
+    console.log(`Cascade delete completed for comment ${commentId}`);
   }
 });
 
 /**
- * Like Deletion Triggers
- *
- * When likes are deleted, update the corresponding content's like count
+ * LIKE DELETION CASCADE
+ * (Keeps post.likesCount accurate)
  */
 triggers.register("postLikes", async (ctx, change) => {
   if (change.operation === "delete" && change.oldDoc) {
-    const deletedLike = change.oldDoc;
-    const post = await ctx.db.get(deletedLike.postId);
+    const like = change.oldDoc;
+    const post = await ctx.db.get(like.postId);
     if (post) {
-      await ctx.db.patch(deletedLike.postId, {
+      await ctx.db.patch(like.postId, {
         likesCount: Math.max(0, post.likesCount - 1),
       });
     }
   }
 });
 
-triggers.register("commentLikes", async (ctx, change) => {
-  if (change.operation === "delete" && change.oldDoc) {
-    const deletedLike = change.oldDoc;
-    const comment = await ctx.db.get(deletedLike.commentId);
-    if (comment) {
-      await ctx.db.patch(deletedLike.commentId, {
-        likesCount: Math.max(0, comment.likesCount - 1),
-      });
-    }
-  }
+// Export with triggers wrapped
+export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
+export const internalMutation = customMutation(
+  rawInternalMutation,
+  customCtx(triggers.wrapDB)
+);
+
+/**
+ * Utility mutations for manual testing
+ */
+export const deleteUserCascade = internalMutation({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    // 0. Find the user by clerkId
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (!user) return;
+
+    const userId = user._id;
+
+    await ctx.db.delete(userId);
+  },
 });
 
-// Export the custom mutation with triggers enabled
-export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
+export const deletePostCascade = mutation({
+  args: { postId: v.id("posts") },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error(
+        "Authentication required. Please log in to perform this action."
+      );
+    }
+
+    // Get the post
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("Post not found");
+    }
+
+    // Check ownership
+    if (post.authorId !== user._id) {
+      throw new Error("You can only delete your own posts");
+    }
+
+    await ctx.db.delete(args.postId);
+  },
+});
+
+export const deleteCommentCascade = mutation({
+  args: { commentId: v.id("comments") },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
+    if (!user) {
+      throw new Error(
+        "Authentication required. Please log in to perform this action."
+      );
+    }
+    const comment = await ctx.db.get(args.commentId);
+    if (!comment) {
+      throw new Error("Comment not found");
+    }
+
+    // Check ownership
+    if (comment.authorId !== user._id) {
+      throw new Error("You can only delete your own comments");
+    }
+
+    await ctx.db.delete(args.commentId);
+  },
+});
+
+export default triggers;

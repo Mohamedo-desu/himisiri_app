@@ -5,18 +5,9 @@ import { useEffect } from "react";
 // Type for notification data from push notifications
 interface NotificationData {
   url?: string;
-  entityType?: "post" | "comment" | "reply" | "user";
+  entityType?: "post" | "comment";
   entityId?: string;
-  type?:
-    | "like"
-    | "comment"
-    | "reply"
-    | "follow"
-    | "mention"
-    | "report_resolved"
-    | "account_warning"
-    | "post_featured"
-    | "system";
+  type?: "like" | "comment" | "account_warning" | "system";
   senderId?: string;
   metadata?: {
     postId?: string;
@@ -42,7 +33,7 @@ export const useNotificationObserver = () => {
         }
 
         // Construct URL based on notification data structure
-        const { entityType, entityId, type, senderId, metadata } = data;
+        const { entityType, entityId, type, metadata } = data;
 
         if (entityType === "post" && entityId) {
           // Check if this is a comment notification on a post
@@ -55,30 +46,6 @@ export const useNotificationObserver = () => {
             // Regular post navigation (for post likes, etc.)
             router.push(`/(main)/post/${entityId}` as any);
           }
-        } else if (
-          (entityType === "comment" || entityType === "reply") &&
-          metadata?.postId
-        ) {
-          // For comments, replies, and their likes - navigate to the post containing them
-          let highlightId = entityId;
-
-          if (type === "reply" && entityType === "comment") {
-            // For replies, entityId is the parent comment ID
-            highlightId = entityId;
-          } else if (entityType === "comment") {
-            // For comment notifications (likes, new comments)
-            highlightId = entityId;
-          }
-
-          router.push(
-            `/(main)/post/${metadata.postId}?highlight=${highlightId}&type=${entityType}` as any
-          );
-        } else if (entityType === "user" && entityId) {
-          // Navigate to user profile
-          router.push(`/(main)/user/${entityId}` as any);
-        } else if (type === "follow" && senderId) {
-          // Navigate to the follower's profile
-          router.push(`/(main)/user/${senderId}` as any);
         } else {
           // For other notification types (system notifications, etc.)
           console.log("No specific navigation for notification type:", type);

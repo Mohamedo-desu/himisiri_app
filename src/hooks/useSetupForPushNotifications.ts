@@ -5,7 +5,7 @@ import { useUserStore } from "@/store/useUserStore";
 import { PushTokenManager } from "@/utils/pushTokenManager";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Platform } from "react-native";
 import { PRIMARY_COLOR } from "unistyles";
 
@@ -14,7 +14,6 @@ function handleRegistrationError(errorMessage: string) {
 }
 
 const useSetupForPushNotifications = () => {
-  const hasInitialized = useRef(false);
   const { currentUser } = useUserStore();
 
   async function registerForPushNotificationsAsync() {

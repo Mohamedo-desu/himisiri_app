@@ -2,12 +2,12 @@ import CustomText from "@/components/ui/CustomText";
 import { api } from "@/convex/_generated/api";
 import { useUserStore } from "@/store/useUserStore";
 import { useMutation } from "convex/react";
-import React, { useRef, useState } from "react";
+import { router } from "expo-router";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   DeviceEventEmitter,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   View,
@@ -19,7 +19,6 @@ import { PRIMARY_COLOR } from "unistyles";
 
 const CreateScreen = () => {
   const { currentUser } = useUserStore();
-  const scrollViewRef = useRef<ScrollView>(null);
 
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
@@ -30,7 +29,7 @@ const CreateScreen = () => {
   const createPost = useMutation(api.posts.createPost);
 
   const handleAddTag = () => {
-    const cleaned = newTag.trim().toLowerCase();
+    const cleaned = newTag.trim().replace(/^#+/, "").toLowerCase();
 
     if (!cleaned) return;
 
@@ -82,20 +81,7 @@ const CreateScreen = () => {
         title: title.trim() || undefined,
         tags: tags.length > 0 ? tags : undefined,
         visibility: "public",
-        type: "other",
       });
-
-      Alert.alert("Success", "Your post has been created!", [
-        {
-          text: "OK",
-          onPress: () => {
-            setContent("");
-            setTitle("");
-            setTags([]);
-            setNewTag("");
-          },
-        },
-      ]);
     } catch (error) {
       console.error("Create post error:", error);
       Alert.alert(
@@ -106,6 +92,11 @@ const CreateScreen = () => {
       );
     } finally {
       setIsSubmitting(false);
+      setContent("");
+      setTitle("");
+      setTags([]);
+      setNewTag("");
+      router.back();
     }
   };
 
@@ -172,18 +163,19 @@ const CreateScreen = () => {
 
         {tags.length > 0 && (
           <View style={styles.tagsWrapper}>
-            {tags.map((tag, index) => (
-              <View key={index} style={styles.tag}>
+            {tags.map((tag) => (
+              <View key={tag} style={styles.tag}>
                 <CustomText style={styles.tagText} variant="small">
                   #{tag}
                 </CustomText>
                 <TouchableOpacity onPress={() => handleRemoveTag(tag)}>
-                  <IconsOutline.XMarkIcon size={12} color={"white"} />
+                  <IconsOutline.XMarkIcon size={12} color="white" />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
         )}
+
         {tags.length < 3 && (
           <View style={styles.tagInputWrapper}>
             <TextInput
@@ -269,11 +261,13 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   input: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.large,
-    padding: theme.gap(4),
+    borderRadius: theme.radii.regular,
+    padding: theme.paddingHorizontal,
     fontSize: 12,
     color: theme.colors.onBackground,
     fontFamily: theme.fonts.Regular,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
   },
   contentInput: {
     textAlignVertical: "top",
@@ -316,10 +310,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     flex: 1,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.regular,
-    padding: theme.gap(3),
     color: theme.colors.onBackground,
     fontFamily: theme.fonts.Regular,
     fontSize: 12,
+    padding: theme.paddingHorizontal,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
   },
   tagButton: {
     backgroundColor: theme.colors.primary,
@@ -331,8 +327,8 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   submitButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.gap(4),
-    borderRadius: theme.radii.large,
+    padding: theme.paddingHorizontal * 1.5,
+    borderRadius: theme.radii.regular,
     alignItems: "center",
     marginBottom: theme.gap(8),
   },

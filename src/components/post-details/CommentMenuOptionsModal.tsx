@@ -42,7 +42,7 @@ const CommentMenuOptionsModal = ({
   comment,
   onCommentUpdated,
 }: CommentMenuOptionsModalProps) => {
-  const deleteComment = useMutation(api.comments.deleteComment);
+  const deleteComment = useMutation(api.triggers.deleteCommentCascade);
 
   const handleDeleteComment = () => {
     onMenuRequestClose();
