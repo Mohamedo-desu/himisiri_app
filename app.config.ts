@@ -37,7 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundImage: "./assets/images/android-icon-background.png",
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
-      googleServicesFile: "./google-services.json",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON,
       package: packageName,
       softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,
