@@ -15,6 +15,7 @@ import {
 import { PaperAirplaneIcon } from "react-native-heroicons/outline";
 import Animated from "react-native-reanimated";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import { PRIMARY_COLOR } from "unistyles";
 import CustomText from "../ui/CustomText";
 
 type CommentInputProps = {
@@ -124,7 +125,7 @@ const CommentInput = ({
             <Ionicons
               name="chatbubble-outline"
               size={22}
-              color={stylesVars.primary}
+              color={PRIMARY_COLOR}
               style={{ marginRight: 8 }}
             />
             <View style={styles.signInTextContainer}>
@@ -156,84 +157,76 @@ const CommentInput = ({
 
 export default CommentInput;
 
-const styles = StyleSheet.create((theme, rt) => {
-  stylesVars = {
-    primary: theme.colors.primary,
-  };
+const styles = StyleSheet.create((theme, rt) => ({
+  container: {
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.grey200,
+    padding: theme.paddingHorizontal,
+    paddingBottom: rt.insets.bottom + 12,
+    position: "absolute",
+    elevation: 10,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    borderBottomWidth: 1.5,
+  },
 
-  return {
-    container: {
-      backgroundColor: theme.colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.grey200,
-      padding: theme.paddingHorizontal,
-      paddingBottom: rt.insets.bottom + 12,
-      position: "absolute",
-      elevation: 10,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 1000,
-      borderBottomWidth: 1.5,
-    },
+  // --- Input field ---
+  inputContainer: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radii.regular,
+    borderWidth: 1,
+    borderColor: theme.colors.grey300,
+    padding: theme.paddingHorizontal,
+    marginBottom: 12,
+  },
+  inputContainerFocused: {
+    borderColor: theme.colors.primary,
+  },
+  textInput: {
+    minHeight: 40, // paragraph-like initial height
+    maxHeight: 140,
+    fontSize: 12,
+    color: theme.colors.onBackground,
+    paddingVertical: 8,
+    fontFamily: theme.fonts.Regular,
+  },
 
-    // --- Input field ---
-    inputContainer: {
-      backgroundColor: theme.colors.background,
-      borderRadius: theme.radii.regular,
-      borderWidth: 1,
-      borderColor: theme.colors.grey300,
-      padding: theme.paddingHorizontal,
-      marginBottom: 12,
-    },
-    inputContainerFocused: {
-      borderColor: theme.colors.primary,
-    },
-    textInput: {
-      minHeight: 40, // paragraph-like initial height
-      maxHeight: 140,
-      fontSize: 12,
-      color: theme.colors.onBackground,
-      paddingVertical: 8,
-      fontFamily: theme.fonts.Regular,
-    },
+  // --- Send button ---
+  sendButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.regular,
+    padding: theme.paddingHorizontal,
+  },
+  sendDisabled: {
+    opacity: 0.5,
+  },
 
-    // --- Send button ---
-    sendButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.colors.primary,
-      borderRadius: theme.radii.regular,
-      padding: theme.paddingHorizontal,
-    },
-    sendDisabled: {
-      opacity: 0.5,
-    },
-
-    // --- Sign-in prompt ---
-    signInPrompt: {
-      paddingVertical: 12,
-    },
-    signInContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.colors.background,
-      borderRadius: theme.radii.regular,
-      borderWidth: 1,
-      borderColor: theme.colors.grey200,
-      padding: theme.paddingHorizontal,
-    },
-    signInTextContainer: {
-      flex: 1,
-    },
-    signInButton: {
-      padding: theme.paddingHorizontal,
-      borderRadius: theme.radii.regular,
-      borderWidth: 1,
-      borderColor: theme.colors.primary,
-    },
-  };
-});
-
-let stylesVars: { primary: string };
+  // --- Sign-in prompt ---
+  signInPrompt: {
+    paddingVertical: 12,
+  },
+  signInContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radii.regular,
+    borderWidth: 1,
+    borderColor: theme.colors.grey200,
+    padding: theme.paddingHorizontal,
+  },
+  signInTextContainer: {
+    flex: 1,
+  },
+  signInButton: {
+    padding: theme.paddingHorizontal,
+    borderRadius: theme.radii.regular,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+}));

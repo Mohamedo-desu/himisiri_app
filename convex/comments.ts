@@ -21,10 +21,6 @@ export const getPaginatedComments = rateLimitedOptionalAuthQuery({
       throw new Error("Post not found");
     }
 
-    if (post.status !== "active") {
-      throw new Error("Cannot access comments for hidden or removed posts");
-    }
-
     // Query comments with pagination
     const paginatedResult = await ctx.db
       .query("comments")
@@ -76,31 +72,10 @@ export const createComment = notificationMutation({
       throw new Error("Authentication required");
     }
 
-    // Check account status
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
-
     // Verify the post exists and is accessible
     const post = await ctx.db.get(args.postId);
     if (!post) {
       throw new Error("Post not found");
-    }
-
-    if (post.status !== "active") {
-      throw new Error("Cannot comment on hidden or removed posts");
     }
 
     // Validate content length
@@ -117,7 +92,6 @@ export const createComment = notificationMutation({
       postId: args.postId,
       authorId: user._id,
       content: args.content,
-      status: "active",
     });
 
     // Update post's comment count

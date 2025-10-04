@@ -5,7 +5,7 @@ const PROJECT_SLUG = "himisiri";
 const OWNER = "mohamedo-desu";
 
 // App production config
-const APP_NAME = "Himisiri-Confess";
+const APP_NAME = "Himisiri";
 const BUNDLE_IDENTIFIER = `com.mohamedodesu.${PROJECT_SLUG}`;
 const PACKAGE_NAME = `com.mohamedodesu.${PROJECT_SLUG}`;
 const ICON = "./assets/images/icon.png";

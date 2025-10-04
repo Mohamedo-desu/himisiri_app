@@ -240,7 +240,7 @@ export const createPost = authenticatedMutation({
       tagsText,
       likesCount: 0,
       commentsCount: 0,
-      status: "active",
+
       visibility: args.visibility,
     });
 
@@ -297,14 +297,6 @@ export const getPostById = rateLimitedOptionalAuthQuery({
 
     if (!post) {
       throw new Error("Post not found");
-    }
-
-    // Check if post is accessible
-    if (post.status !== "active") {
-      // Only allow author to view hidden posts
-      if (!ctx.user || post.authorId !== ctx.user._id) {
-        throw new Error("Post not found or not accessible");
-      }
     }
 
     // Check visibility permissions
@@ -379,9 +371,7 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
     // Fetch public active posts with pagination
     const paginatedResult = await ctx.db
       .query("posts")
-      .withIndex("by_status_visibility", (q) =>
-        q.eq("status", "active").eq("visibility", "public")
-      )
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
       .paginate(args.paginationOpts);
 
     // Filter out non-matching tags
@@ -456,11 +446,6 @@ export const updatePost = rateLimitedAuthMutationMedium({
     // Check ownership
     if (post.authorId !== ctx.user._id) {
       throw new Error("You can only edit your own posts");
-    }
-
-    // Check if post is still editable
-    if (post.status !== "active") {
-      throw new Error("Cannot edit posts that are hidden or removed");
     }
 
     const updates: Partial<Doc<"posts">> = {};

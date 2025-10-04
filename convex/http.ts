@@ -1,4 +1,4 @@
-import { adventurer } from "@dicebear/collection";
+import * as adventurer from "@dicebear/adventurer";
 import { createAvatar } from "@dicebear/core";
 import { faker } from "@faker-js/faker";
 import { httpRouter } from "convex/server";

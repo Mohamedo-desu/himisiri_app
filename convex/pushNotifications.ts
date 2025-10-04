@@ -158,23 +158,3 @@ export const sendNotificationWithPush = internalMutation({
     }
   },
 });
-
-// Get notification preferences for a user (you can expand this later)
-export const getUserNotificationPreferences = internalMutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    // For now, return default preferences
-    // Later you can create a preferences table
-    return {
-      likes: true,
-      comments: true,
-      replies: true,
-      follows: true,
-      mentions: true,
-      systemNotifications: true,
-      pushNotifications: true,
-    };
-  },
-});

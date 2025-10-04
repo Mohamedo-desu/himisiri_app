@@ -27,23 +27,6 @@ export const rateLimitedAuthMutationHigh = customMutation(mutation, {
       throws: true,
     });
 
-    // Check account status
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
-
     return {
       ctx: { ...ctx, user },
       args: {},
@@ -70,23 +53,6 @@ export const rateLimitedAuthMutationMedium = customMutation(mutation, {
       key: user._id,
       throws: true,
     });
-
-    // Check account status
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
 
     return {
       ctx: { ...ctx, user },
@@ -115,23 +81,6 @@ export const rateLimitedAuthMutationLow = customMutation(mutation, {
       throws: true,
     });
 
-    // Check account status
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
-
     return {
       ctx: { ...ctx, user },
       args: {},
@@ -158,23 +107,6 @@ export const rateLimitedAuthMutationAccount = customMutation(mutation, {
       key: user._id,
       throws: true,
     });
-
-    // Check account status
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
 
     return {
       ctx: { ...ctx, user },
@@ -204,25 +136,6 @@ export const rateLimitedOptionalAuthQuery = customQuery(query, {
       );
     }
 
-    // Check account status if user is authenticated
-    if (user) {
-      if (user.accountStatus === "paused") {
-        throw new Error(
-          "Your account has been temporarily paused due to multiple reports. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "suspended") {
-        throw new Error(
-          "Your account has been suspended. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "banned") {
-        throw new Error("Your account has been permanently banned.");
-      }
-    }
-
     return {
       ctx: { ...ctx, user },
       args: {},
@@ -248,25 +161,6 @@ export const rateLimitedPublicQuery = customQuery(query, {
       throw new Error(
         `Rate limit exceeded for public queries. Try again at ${retryAt ? new Date(retryAt).toISOString() : "later"}`
       );
-    }
-
-    // Check account status if user is authenticated
-    if (user) {
-      if (user.accountStatus === "paused") {
-        throw new Error(
-          "Your account has been temporarily paused due to multiple reports. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "suspended") {
-        throw new Error(
-          "Your account has been suspended. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "banned") {
-        throw new Error("Your account has been permanently banned.");
-      }
     }
 
     return {

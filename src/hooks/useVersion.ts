@@ -21,7 +21,9 @@ export const useVersion = () => {
   // Helper function to get cached download URL
   const getCachedDownloadUrl = useCallback(async (): Promise<string | null> => {
     try {
-      const { cachedDownloadUrl } = getFromLocalStorage(["cachedDownloadUrl"]);
+      const { cachedDownloadUrl } = await getFromLocalStorage([
+        "cachedDownloadUrl",
+      ]);
       return cachedDownloadUrl || null;
     } catch (error) {
       console.error("[DEBUG] Error getting cached download URL:", error);
@@ -72,7 +74,7 @@ export const useVersion = () => {
   useEffect(() => {
     const loadCachedVersion = async () => {
       try {
-        const { cachedVersion } = getFromLocalStorage(["cachedVersion"]);
+        const { cachedVersion } = await getFromLocalStorage(["cachedVersion"]);
         if (cachedVersion) {
           // console.log("[DEBUG] Loading cached version:", cachedVersion);
           setBackendVersion(cachedVersion);
@@ -176,7 +178,7 @@ export const useVersion = () => {
                     },
                   },
                 ],
-                { cancelable: true }
+                { cancelable: false }
               );
             }
 

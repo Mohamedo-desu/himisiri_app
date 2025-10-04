@@ -20,23 +20,6 @@ export const authenticatedQuery = customQuery(query, {
       );
     }
 
-    // Check if user account is paused, suspended, or banned
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
-
     return {
       ctx: { ...ctx, user },
       args: {},
@@ -52,25 +35,6 @@ export const optionalAuthQuery = customQuery(query, {
   args: {},
   input: async (ctx, args) => {
     const user = await getAuthenticatedUser(ctx);
-
-    // Still check account status if user is authenticated
-    if (user) {
-      if (user.accountStatus === "paused") {
-        throw new Error(
-          "Your account has been temporarily paused due to multiple reports. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "suspended") {
-        throw new Error(
-          "Your account has been suspended. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "banned") {
-        throw new Error("Your account has been permanently banned.");
-      }
-    }
 
     return {
       ctx: { ...ctx, user },
@@ -93,23 +57,6 @@ export const authenticatedMutation = customMutation(mutation, {
       );
     }
 
-    // Check if user account is paused, suspended, or banned
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
-
     return {
       ctx: { ...ctx, user },
       args: {},
@@ -127,23 +74,6 @@ export const optionalAuthMutation = customMutation(mutation, {
     const user = await getAuthenticatedUser(ctx);
 
     // Still check account status if user is authenticated
-    if (user) {
-      if (user.accountStatus === "paused") {
-        throw new Error(
-          "Your account has been temporarily paused due to multiple reports. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "suspended") {
-        throw new Error(
-          "Your account has been suspended. Please contact support."
-        );
-      }
-
-      if (user.accountStatus === "banned") {
-        throw new Error("Your account has been permanently banned.");
-      }
-    }
 
     return {
       ctx: { ...ctx, user },

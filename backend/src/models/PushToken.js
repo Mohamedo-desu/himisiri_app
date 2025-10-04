@@ -11,55 +11,6 @@ const pushTokenSchema = new mongoose.Schema({
     required: true,
     index: true, // Index for faster queries
   },
-  platform: {
-    type: String,
-    required: true,
-    enum: ["ios", "android", "web"],
-  },
-  deviceName: {
-    type: String,
-    default: "Unknown",
-  },
-  deviceType: {
-    type: String,
-    default: "Unknown",
-  },
-  modelName: {
-    type: String,
-    default: "Unknown",
-  },
-  brand: {
-    type: String,
-    default: "Unknown",
-  },
-  manufacturer: {
-    type: String,
-    default: "Unknown",
-  },
-  osName: {
-    type: String,
-    default: "Unknown",
-  },
-  osVersion: {
-    type: String,
-    default: "Unknown",
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-  lastUsed: {
-    type: Date,
-    default: Date.now,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
 });
 
 // Update the updatedAt field before saving

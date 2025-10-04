@@ -2,6 +2,7 @@ import InitialLayout from "@/components/InitialLayout";
 import ToastConfig from "@/config/toast/ToastConfig";
 import { useNotificationObserver } from "@/hooks/useNotificationObserver";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
+import { useVersion } from "@/hooks/useVersion";
 import ClerkAndConvexProvider from "@/providers/ClerkAndConvexProvider";
 import UserPresenceProvider from "@/providers/UserPresenceProvider";
 import { setupDeepLinking } from "@/utils/deepLinkHandler";
@@ -43,6 +44,7 @@ Notifications.setNotificationHandler({
 
 function RootLayout() {
   const { top } = useSafeAreaInsets();
+  const { theme } = useUnistyles();
 
   const navigationRef = useNavigationContainerRef();
 
@@ -50,12 +52,12 @@ function RootLayout() {
 
   useNotificationObserver();
 
+  useVersion();
+
   useEffect(() => {
     const cleanup = setupDeepLinking();
     return cleanup;
   }, []);
-
-  const { theme } = useUnistyles();
 
   useEffect(() => {
     if (navigationRef?.current) {

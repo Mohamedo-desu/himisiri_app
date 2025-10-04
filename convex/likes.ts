@@ -16,30 +16,10 @@ export const togglePostLike = notificationMutation({
       throw new Error("Authentication required");
     }
 
-    // Check account status
-    if (user.accountStatus === "paused") {
-      throw new Error(
-        "Your account has been temporarily paused due to multiple reports. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "suspended") {
-      throw new Error(
-        "Your account has been suspended. Please contact support."
-      );
-    }
-
-    if (user.accountStatus === "banned") {
-      throw new Error("Your account has been permanently banned.");
-    }
     // Get the post
     const post = await ctx.db.get(args.postId);
     if (!post) {
       throw new Error("Post not found");
-    }
-
-    if (post.status !== "active") {
-      throw new Error("Cannot like posts that are hidden or removed");
     }
 
     // Check if user already liked this post
