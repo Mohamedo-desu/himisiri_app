@@ -105,6 +105,8 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
 
     const paginatedResult = await query.paginate(args.paginationOpts);
 
+    console.log({ paginatedResult });
+
     // Create deterministic shuffle using daily seed + user ID to prevent jumpy posts
     const shuffledPosts = paginatedResult.page.slice();
 

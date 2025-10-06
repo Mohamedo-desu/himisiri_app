@@ -5,19 +5,20 @@ const router = express.Router();
 // Register a new push token
 router.post("/register", async (req, res) => {
   try {
-    const { pushToken, deviceId } = req.body;
+    const { pushToken, deviceId, userId } = req.body;
 
     // Validate required fields
-    if (!pushToken || !deviceId) {
+    if (!pushToken || !deviceId || !userId) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: pushToken, deviceId, or platform",
+        message: "Missing required fields: pushToken, deviceId, or userId",
       });
     }
 
     // Check if this exact token already exists and is active
     const existingToken = await PushToken.findOne({
       pushToken,
+      userId,
       isActive: true,
     });
 
@@ -38,6 +39,7 @@ router.post("/register", async (req, res) => {
     const newPushToken = new PushToken({
       pushToken,
       deviceId,
+      userId, // <-- store the userId
     });
 
     const savedToken = await newPushToken.save();
@@ -61,6 +63,47 @@ router.post("/register", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error while registering push token",
+    });
+  }
+});
+
+// Delete a push token
+router.delete("/delete", async (req, res) => {
+  try {
+    const { tokenId, pushToken, deviceId, userId } = req.body;
+
+    if (!tokenId && !pushToken && !deviceId && !userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide tokenId, pushToken, deviceId, or userId to delete",
+      });
+    }
+
+    let query = {};
+    if (tokenId) query._id = tokenId;
+    if (pushToken) query.pushToken = pushToken;
+    if (deviceId) query.deviceId = deviceId;
+    if (userId) query.userId = userId;
+
+    const deleted = await PushToken.deleteMany(query); // use deleteMany for userId cleanup
+
+    if (deleted.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No push tokens found for given criteria",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Push token(s) deleted successfully",
+      deletedCount: deleted.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting push token:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while deleting push token",
     });
   }
 });

@@ -59,6 +59,14 @@ triggers.register("users", async (ctx, change) => {
       await ctx.db.delete(token._id);
     }
 
+    await fetch("https://himisiri-app.onrender.com/api/delete", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId }),
+    });
+
     // Delete notifications received
     const notifsReceived = await ctx.db
       .query("notifications")

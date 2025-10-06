@@ -2,6 +2,7 @@ import { BACKEND_URL } from "@/constants/device";
 import { api } from "@/convex/_generated/api";
 import { convex } from "@/providers/ClerkAndConvexProvider";
 import { deleteFromLocalStorage, saveToLocalStorage } from "@/store/storage";
+import { useUserStore } from "@/store/useUserStore";
 import { PushTokenManager } from "@/utils/pushTokenManager";
 
 interface RegisterTokenResponse {
@@ -24,6 +25,8 @@ export class PushTokenService {
       // Get consistent device ID
       const deviceId = await PushTokenManager.getCurrentDeviceId();
 
+      const currentUser = useUserStore.getState().currentUser;
+
       const data = await convex.mutation(api.pushTokens.registerPushToken, {
         pushToken,
         deviceId: deviceId || `device_${Date.now()}`,
@@ -41,6 +44,7 @@ export class PushTokenService {
         body: JSON.stringify({
           pushToken,
           deviceId,
+          userId: currentUser?._id,
         }),
       });
       const bData = await response.json();
