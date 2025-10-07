@@ -73,11 +73,12 @@ export const sendToAllUsers = internalAction({
     // ✅ Create Expo push messages
     const messages = validTokens.map((token) => ({
       to: token,
-      sound: "default",
+      sound: "update.wav",
       title,
       body,
       data: data || {},
       priority: "high",
+      channelId: "app-updates",
     }));
 
     const batchSize = 100;
