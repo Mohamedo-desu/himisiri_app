@@ -191,9 +191,11 @@ triggers.register("postLikes", async (ctx, change) => {
  * Sends push notifications to all devices when a new version is added.
  */
 triggers.register("appVersions", async (ctx, change) => {
-  if (change.operation === "insert" && change.newDoc) {
+  if (change.operation === "update") {
+    if (change.newDoc.downloadUrl === "https://drive.google.com/placeholder") {
+      return;
+    }
     const version = change.newDoc;
-    console.log(`🚀 New app version released: ${version.version}`);
 
     // Fetch all push tokens
     const tokens = await ctx.db.query("pushTokens").collect();
@@ -213,8 +215,6 @@ triggers.register("appVersions", async (ctx, change) => {
       downloadUrl: version.downloadUrl ?? null,
     };
 
-    // in here just directly send all pushtokens found a push notification
-    // inside triggers.register("users", ...)
     await ctx.scheduler.runAfter(0, internal.actions.sendToAllUsers, {
       body,
       title,
@@ -300,6 +300,38 @@ export const deleteCommentCascade = mutation({
     }
 
     await ctx.db.delete(args.commentId);
+  },
+});
+
+export const updateVersionUrl = internalMutation({
+  args: {
+    url: v.string(),
+    versionId: v.optional(v.id("appVersions")),
+  },
+  handler: async (ctx, args) => {
+    let versionDocId = args.versionId;
+
+    // 1️⃣ If versionId isn’t provided, grab the latest version automatically
+    if (!versionDocId) {
+      const latest = await ctx.db.query("appVersions").order("desc").first();
+      if (!latest) {
+        throw new Error("❌ No app versions found.");
+      }
+      versionDocId = latest._id;
+    }
+
+    // 2️⃣ Get the current version doc
+    const version = await ctx.db.get(versionDocId);
+    if (!version) {
+      throw new Error(`❌ Version not found for ID: ${versionDocId}`);
+    }
+
+    // 3️⃣ Update the download URL
+    await ctx.db.patch(versionDocId, {
+      downloadUrl: args.url,
+    });
+
+    return { success: true, versionId: versionDocId };
   },
 });
 

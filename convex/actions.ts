@@ -22,7 +22,7 @@ export const deleteExternalPushTokens = internalAction({
       }
 
       const result = await res.json();
-      console.log("External API deleted push tokens:", result);
+
       return result;
     } catch (err) {
       console.error("Error calling external API:", err);
@@ -45,11 +45,9 @@ export const sendToAllUsers = internalAction({
     title: v.string(),
     body: v.string(),
     data: v.optional(v.any()),
-    tokens: v.array(v.object({ pushToken: v.string() })), // ✅ Strongly typed tokens
+    tokens: v.array(v.any()), // ✅ Strongly typed tokens
   },
   handler: async (_ctx, { title, body, data, tokens }) => {
-    console.log("📢 Starting push notification broadcast...");
-
     const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
     if (!tokens.length) {

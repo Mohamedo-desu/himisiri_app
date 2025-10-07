@@ -7,7 +7,7 @@
     "build:android": "clear && eas build --platform android --profile preview",
     "offline": "expo start --offline",
     "publish:expo": "clear && eas update --branch preview",
-    "build:web": "clear && npx expo export --platform web",
+    "build:web": "clear && npx expo export --platform web && eas deploy --prod",
     "release:web": "clear && eas deploy --prod",
     "upgrade": "clear && bun install expo@latest && bunx expo install --fix",
     "android": "clear && bunx expo run:android --device --variant debug",

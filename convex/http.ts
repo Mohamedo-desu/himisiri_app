@@ -173,4 +173,54 @@ http.route({
   }),
 });
 
+// ✅ Get latest version (for web & deep link page)
+http.route({
+  path: "/appVersions/latest",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    try {
+      const latest = await ctx.runQuery(
+        internal.versioning.getLatestVersion,
+        {}
+      );
+      if (!latest) {
+        return new Response(JSON.stringify({ error: "No versions found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          version: latest.version,
+          type: latest.type,
+          releaseNotes: latest.releaseNotes,
+          downloadUrl: latest.downloadUrl,
+        }),
+        {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        }
+      );
+    } catch (err: any) {
+      console.error("Error fetching latest version:", err);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch latest version" }),
+        {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        }
+      );
+    }
+  }),
+});
+
 export default http;

@@ -37,27 +37,17 @@ export const createVersion = internalMutation({
 /**
  * Get the latest version by type (major, minor, or patch)
  */
+
 export const getLatestVersion = internalQuery({
-  args: {
-    type: v.union(v.literal("major"), v.literal("minor"), v.literal("patch")),
-  },
-  handler: async (ctx, { type }) => {
-    const versions = await ctx.db
-      .query("appVersions")
-      .withIndex("by_type", (q) => q.eq("type", type))
-      .order("desc")
-      .collect();
-
-    if (versions.length === 0) return null;
-
-    // Sort semantically if version uses standard semver (e.g., "1.2.3")
-    const sorted = versions.sort((a, b) => {
-      const [aMajor, aMinor, aPatch] = a.version.split(".").map(Number);
-      const [bMajor, bMinor, bPatch] = b.version.split(".").map(Number);
-      return bMajor - aMajor || bMinor - aMinor || bPatch - aPatch;
-    });
-
-    return sorted[0];
+  handler: async (ctx) => {
+    const latest = await ctx.db.query("appVersions").order("desc").first();
+    if (!latest) throw new Error("No app versions found");
+    return {
+      version: latest.version,
+      downloadUrl: latest.downloadUrl,
+      type: latest.type,
+      releaseNotes: latest.releaseNotes,
+    };
   },
 });
 
