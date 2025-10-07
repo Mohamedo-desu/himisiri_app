@@ -2,7 +2,6 @@ import { BACKEND_URL } from "@/constants/device";
 import { api } from "@/convex/_generated/api";
 import { convex } from "@/providers/ClerkAndConvexProvider";
 import { deleteFromLocalStorage, saveToLocalStorage } from "@/store/storage";
-import { useUserStore } from "@/store/useUserStore";
 import { PushTokenManager } from "@/utils/pushTokenManager";
 
 interface RegisterTokenResponse {
@@ -25,36 +24,37 @@ export class PushTokenService {
       // Get consistent device ID
       const deviceId = await PushTokenManager.getCurrentDeviceId();
 
-      const currentUser = useUserStore.getState().currentUser;
-
       const data = await convex.mutation(api.pushTokens.registerPushToken, {
         pushToken,
         deviceId: deviceId || `device_${Date.now()}`,
         timestamp: new Date().toLocaleString(),
       });
 
+      console.log({ data });
+
       if (!data) {
         return { success: false, message: "Failed to register push token" };
       }
-      const response = await fetch(`${BACKEND_URL}/push-tokens/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pushToken,
-          deviceId,
-          userId: currentUser?._id,
-        }),
-      });
-      const bData = await response.json();
+      if (data) {
+        const response = await fetch(`${BACKEND_URL}/push-tokens/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            pushToken,
+            deviceId,
+            userId: data.userId,
+          }),
+        });
+        const bData = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          bData.message || "Failed to register push token in backend"
-        );
+        if (!response.ok) {
+          throw new Error(
+            bData.message || "Failed to register push token in backend"
+          );
+        }
       }
-
       return data;
     } catch (error) {
       console.error("Error registering push token:", error);

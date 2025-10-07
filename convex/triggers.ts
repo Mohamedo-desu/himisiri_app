@@ -5,6 +5,7 @@ import {
 } from "convex-helpers/server/customFunctions";
 import { Triggers } from "convex-helpers/server/triggers";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
 import {
   internalMutation as rawInternalMutation,
@@ -18,6 +19,7 @@ const triggers = new Triggers<DataModel>();
 /**
  * USER DELETION CASCADE
  */
+
 triggers.register("users", async (ctx, change) => {
   if (change.operation === "delete" && change.oldDoc) {
     const userId = change.id;
@@ -59,12 +61,9 @@ triggers.register("users", async (ctx, change) => {
       await ctx.db.delete(token._id);
     }
 
-    await fetch("https://himisiri-app.onrender.com/api/delete", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userId }),
+    // inside triggers.register("users", ...)
+    await ctx.scheduler.runAfter(0, internal.actions.deleteExternalPushTokens, {
+      userId,
     });
 
     // Delete notifications received
