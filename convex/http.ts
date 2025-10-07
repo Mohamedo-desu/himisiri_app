@@ -108,27 +108,11 @@ http.route({
   }),
 });
 
-const checkDeployKey = (req: Request) => {
-  const key =
-    req.headers.get("x-deploy-key") || req.headers.get("authorization");
-  // Accept either "X-Deploy-Key: <token>" OR "Authorization: Bearer <token>"
-  if (!key) return false;
-  // If Authorization header, it may be "Bearer <token>"
-  if (key.startsWith("Bearer ")) {
-    return key.slice("Bearer ".length) === process.env.CONVEX_DEPLOYMENT_TOKEN;
-  }
-  return key === process.env.CONVEX_DEPLOYMENT_TOKEN;
-};
-
 http.route({
   path: "/version",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
     try {
-      if (!checkDeployKey(req)) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-
       const body = await req.json();
       const { version, type, releaseNotes, downloadUrl } = body;
       if (!version || !type || !releaseNotes) {
@@ -163,10 +147,6 @@ http.route({
   method: "DELETE",
   handler: httpAction(async (ctx, req) => {
     try {
-      if (!checkDeployKey(req)) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-
       // Extract version param from URL path
       const pathname = new URL(req.url).pathname; // e.g. "/version/1.2.3"
       const parts = pathname.split("/");
