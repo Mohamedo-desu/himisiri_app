@@ -3,6 +3,13 @@ import { defineSchema, defineTable } from "convex/server";
 import { Infer, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
+export const appVersions = defineTable({
+  version: v.string(),
+  type: v.union(v.literal("major"), v.literal("minor"), v.literal("patch")),
+  releaseNotes: v.string(),
+  downloadUrl: v.optional(v.string()),
+});
+
 export const users = defineTable({
   userName: v.string(),
   emailAddress: v.string(),
@@ -65,6 +72,9 @@ export const notifications = defineTable({
 
 export default defineSchema({
   ...rateLimitTables,
+  appVersions: appVersions
+    .index("by_version", ["version"])
+    .index("by_type", ["type"]),
   users: users
     .index("by_clerk_id", ["clerkId"])
     .index("by_user_name", ["userName"])

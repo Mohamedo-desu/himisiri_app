@@ -28,6 +28,7 @@ import type * as rateLimits from "../rateLimits.js";
 import type * as triggers from "../triggers.js";
 import type * as userPresence from "../userPresence.js";
 import type * as users from "../users.js";
+import type * as versioning from "../versioning.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   triggers: typeof triggers;
   userPresence: typeof userPresence;
   users: typeof users;
+  versioning: typeof versioning;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

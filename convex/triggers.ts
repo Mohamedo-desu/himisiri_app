@@ -186,6 +186,48 @@ triggers.register("postLikes", async (ctx, change) => {
   }
 });
 
+/**
+ * APP VERSION TRIGGER
+ * Sends push notifications to all devices when a new version is added.
+ */
+triggers.register("appVersions", async (ctx, change) => {
+  if (change.operation === "insert" && change.newDoc) {
+    const version = change.newDoc;
+    console.log(`🚀 New app version released: ${version.version}`);
+
+    // Fetch all push tokens
+    const tokens = await ctx.db.query("pushTokens").collect();
+    if (tokens.length === 0) {
+      console.log(
+        "No push tokens found, skipping version notification broadcast."
+      );
+      return;
+    }
+
+    const title = `🎉 Version ${version.version} Released!`;
+    const body =
+      version.releaseNotes || "A new update is available. Check it out!";
+    const data = {
+      version: version.version,
+      type: version.type,
+      downloadUrl: version.downloadUrl ?? null,
+    };
+
+    // in here just directly send all pushtokens found a push notification
+    // inside triggers.register("users", ...)
+    await ctx.scheduler.runAfter(0, internal.actions.sendToAllUsers, {
+      body,
+      title,
+      data,
+      tokens,
+    });
+
+    console.log(
+      `✅ Sent version ${version.version} notifications to ${tokens.length} devices.`
+    );
+  }
+});
+
 // Export with triggers wrapped
 export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 export const internalMutation = customMutation(

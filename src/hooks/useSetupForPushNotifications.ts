@@ -14,7 +14,7 @@ function handleRegistrationError(errorMessage: string) {
 }
 
 const useSetupForPushNotifications = () => {
-  const { currentUser } = useUserStore();
+  const currentUser = useUserStore((state) => state.currentUser);
 
   async function registerForPushNotificationsAsync() {
     try {

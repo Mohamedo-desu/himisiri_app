@@ -1,3 +1,4 @@
+import { PushTokenService } from "@/services/pushTokenService";
 import { getFromLocalStorage } from "@/store/storage";
 import { useUserStore } from "@/store/useUserStore";
 import { getDeviceId } from "@/utils/deviceId";
@@ -39,9 +40,7 @@ export class PushTokenManager {
         if (pushTokenUserId && pushTokenUserId === currentUser._id) {
           return pushTokenRegistered === "true";
         }
-        const { PushTokenService } = await import(
-          "@/services/pushTokenService"
-        );
+
         await PushTokenService.registerPushToken(pushTokenString);
       }
 

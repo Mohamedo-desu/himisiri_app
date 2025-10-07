@@ -108,4 +108,89 @@ http.route({
   }),
 });
 
+const checkDeployKey = (req: Request) => {
+  const key =
+    req.headers.get("x-deploy-key") || req.headers.get("authorization");
+  // Accept either "X-Deploy-Key: <token>" OR "Authorization: Bearer <token>"
+  if (!key) return false;
+  // If Authorization header, it may be "Bearer <token>"
+  if (key.startsWith("Bearer ")) {
+    return key.slice("Bearer ".length) === process.env.CONVEX_DEPLOYMENT_TOKEN;
+  }
+  return key === process.env.CONVEX_DEPLOYMENT_TOKEN;
+};
+
+http.route({
+  path: "/version",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      if (!checkDeployKey(req)) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      const body = await req.json();
+      const { version, type, releaseNotes, downloadUrl } = body;
+      if (!version || !type || !releaseNotes) {
+        return new Response("Missing required fields", { status: 400 });
+      }
+
+      await ctx.runMutation(internal.versioning.createVersion, {
+        version,
+        type,
+        releaseNotes,
+        downloadUrl,
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err: any) {
+      // Map duplication error or other server errors to appropriate codes
+      const message = err?.message || "Internal Server Error";
+      const status = /already exists/i.test(message) ? 409 : 500;
+      return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
+http.route({
+  path: "/version/:version",
+  method: "DELETE",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      if (!checkDeployKey(req)) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+
+      // Extract version param from URL path
+      const pathname = new URL(req.url).pathname; // e.g. "/version/1.2.3"
+      const parts = pathname.split("/");
+      const version = decodeURIComponent(parts[parts.length - 1] || "");
+
+      if (!version) {
+        return new Response("Missing version in path", { status: 400 });
+      }
+
+      await ctx.runMutation(internal.versioning.deleteVersion, { version });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err: any) {
+      const message = err?.message || "Internal Server Error";
+      const status = /not found/i.test(message) ? 404 : 500;
+      return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
 export default http;
