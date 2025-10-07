@@ -54,7 +54,7 @@ jobs:
         id: update_backend
         env:
           CONVEX_URL: ${{ secrets.CONVEX_DEPLOYMENT_URL }}
-          CONVEX_TOKEN: ${{ secrets.CONVEX_DEPLOYMENT_TOKEN }}
+          CONVEX_DEPLOYMENT_TOKEN: ${{ secrets.CONVEX_DEPLOYMENT_TOKEN }}
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -62,7 +62,7 @@ jobs:
           echo "Creating version record in Convex..."
           RESPONSE=$(curl -s -o /tmp/response.txt -w "%{http_code}" -X POST "$CONVEX_URL/version" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $CONVEX_TOKEN" \
+            -H "Authorization: Bearer $CONVEX_DEPLOYMENT_TOKEN" \
             -d "{
               \"version\": \"$VERSION\",
               \"type\": \"${{ steps.previous_tag.outputs.type }}\",
@@ -171,9 +171,9 @@ jobs:
       - name: Rollback Convex version
         env:
           CONVEX_URL: ${{ secrets.CONVEX_DEPLOYMENT_URL }}
-          CONVEX_TOKEN: ${{ secrets.CONVEX_DEPLOYMENT_TOKEN }}
+          CONVEX_DEPLOYMENT_TOKEN: ${{ secrets.CONVEX_DEPLOYMENT_TOKEN }}
         run: |
           VERSION=${{ needs.version-check.outputs.version }}
           echo "Rolling back version $VERSION..."
           curl -X DELETE "$CONVEX_URL/version/$VERSION" \
-            -H "Authorization: Bearer $CONVEX_TOKEN"
+            -H "Authorization: Bearer $CONVEX_DEPLOYMENT_TOKEN"
