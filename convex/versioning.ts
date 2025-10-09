@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalQuery } from "./_generated/server";
+import { internalQuery, query } from "./_generated/server";
 import { internalMutation } from "./triggers";
 
 /**
@@ -39,6 +39,18 @@ export const createVersion = internalMutation({
  */
 
 export const getLatestVersion = internalQuery({
+  handler: async (ctx) => {
+    const latest = await ctx.db.query("appVersions").order("desc").first();
+    if (!latest) throw new Error("No app versions found");
+    return {
+      version: latest.version,
+      downloadUrl: latest.downloadUrl,
+      type: latest.type,
+      releaseNotes: latest.releaseNotes,
+    };
+  },
+});
+export const getLatestVersionFrontend = query({
   handler: async (ctx) => {
     const latest = await ctx.db.query("appVersions").order("desc").first();
     if (!latest) throw new Error("No app versions found");

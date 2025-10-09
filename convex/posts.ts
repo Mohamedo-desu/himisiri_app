@@ -1,7 +1,11 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
-import { authenticatedMutation, authenticatedQuery } from "./customFunctions";
+import {
+  authenticatedMutation,
+  authenticatedQuery,
+  optionalAuthQuery,
+} from "./customFunctions";
 import {
   rateLimitedAuthMutationMedium,
   rateLimitedOptionalAuthQuery,
@@ -22,20 +26,12 @@ const ssnPattern = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/g;
 export const getMyPosts = authenticatedQuery({
   args: {
     paginationOpts: paginationOptsValidator,
-    status: v.optional(
-      v.union(v.literal("active"), v.literal("hidden"), v.literal("removed"))
-    ),
   },
   handler: async (ctx, args) => {
     // ctx.user is automatically available and guaranteed to exist
     let query = ctx.db
       .query("posts")
       .withIndex("by_author", (q: any) => q.eq("authorId", ctx.user._id));
-
-    // Filter by status if specified, otherwise show all statuses
-    if (args.status) {
-      query = query.filter((q: any) => q.eq(q.field("status"), args.status));
-    }
 
     const paginatedResult = await query
       .order("desc") // Most recent first
@@ -79,7 +75,7 @@ export const getMyPosts = authenticatedQuery({
 /**
  * Get paginated posts with likes and comments count
  */
-export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
+export const getPaginatedPosts = optionalAuthQuery({
   args: {
     paginationOpts: paginationOptsValidator,
     visibility: v.optional(
@@ -91,10 +87,7 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     ),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("posts")
-      .withIndex("by_creation_time")
-      .filter((q: any) => q.eq(q.field("status"), "active"));
+    let query = ctx.db.query("posts");
 
     // Filter by visibility if specified
     if (args.visibility) {
@@ -104,8 +97,6 @@ export const getPaginatedPosts = rateLimitedOptionalAuthQuery({
     }
 
     const paginatedResult = await query.paginate(args.paginationOpts);
-
-    console.log({ paginatedResult });
 
     // Create deterministic shuffle using daily seed + user ID to prevent jumpy posts
     const shuffledPosts = paginatedResult.page.slice();
@@ -285,7 +276,38 @@ export const deletePost = authenticatedMutation({
     return { success: true };
   },
 });
+export const updatePost = rateLimitedAuthMutationMedium({
+  args: {
+    postId: v.id("posts"),
+    content: v.optional(v.string()),
+    title: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    visibility: v.optional(v.union(v.literal("public"), v.literal("private"))),
+  },
+  handler: async (ctx, args) => {
+    // Get the post
+    const post = await ctx.db.get(args.postId);
+    if (!post) {
+      throw new Error("Post not found");
+    }
 
+    // Check ownership
+    if (post.authorId !== ctx.user._id) {
+      throw new Error("You can only edit your own posts");
+    }
+
+    const updates: Partial<Doc<"posts">> = {};
+
+    if (args.visibility !== undefined) {
+      updates.visibility = args.visibility;
+    }
+
+    // Update the post
+    await ctx.db.patch(args.postId, updates);
+
+    return { success: true };
+  },
+});
 /**
  * Get a single post by ID with detailed information
  */
@@ -427,38 +449,5 @@ export const searchByTag = rateLimitedOptionalAuthQuery({
       page: enriched,
       continueCursor: paginatedResult.continueCursor || "",
     };
-  },
-});
-
-export const updatePost = rateLimitedAuthMutationMedium({
-  args: {
-    postId: v.id("posts"),
-    content: v.optional(v.string()),
-    title: v.optional(v.string()),
-    tags: v.optional(v.array(v.string())),
-    visibility: v.optional(v.union(v.literal("public"), v.literal("private"))),
-  },
-  handler: async (ctx, args) => {
-    // Get the post
-    const post = await ctx.db.get(args.postId);
-    if (!post) {
-      throw new Error("Post not found");
-    }
-
-    // Check ownership
-    if (post.authorId !== ctx.user._id) {
-      throw new Error("You can only edit your own posts");
-    }
-
-    const updates: Partial<Doc<"posts">> = {};
-
-    if (args.visibility !== undefined) {
-      updates.visibility = args.visibility;
-    }
-
-    // Update the post
-    await ctx.db.patch(args.postId, updates);
-
-    return { success: true };
   },
 });

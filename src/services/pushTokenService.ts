@@ -29,8 +29,6 @@ export class PushTokenService {
         timestamp: new Date().toLocaleString(),
       });
 
-      console.log({ data });
-
       if (!data) {
         return { success: false, message: "Failed to register push token" };
       }

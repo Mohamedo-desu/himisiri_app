@@ -1,7 +1,7 @@
 {
   "name": "himisiri_confession_app",
   "main": "index.ts",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "start": "expo start",
     "build:android": "clear && eas build --platform android --profile preview",
@@ -49,9 +49,7 @@
     "expo-status-bar": "~3.0.8",
     "expo-system-ui": "^6.0.7",
     "expo-updates": "~29.0.12",
-    "expo-web-browser": "~15.0.8",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
     "react-native": "0.81.4",
     "react-native-animated-numbers": "^0.6.3",
     "react-native-gesture-handler": "~2.28.0",
@@ -65,7 +63,6 @@
     "react-native-svg": "15.12.1",
     "react-native-toast-message": "^2.3.3",
     "react-native-unistyles": "^3.0.13",
-    "react-native-web": "~0.21.0",
     "svix": "^1.76.1",
     "zustand": "^5.0.8"
   },

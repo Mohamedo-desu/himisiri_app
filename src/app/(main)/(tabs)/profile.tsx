@@ -1,15 +1,17 @@
+import { TAB_BAR_HEIGHT } from "@/components/tabs/CustomTabBar";
 import CustomText from "@/components/ui/CustomText";
 import UserAvatar from "@/components/ui/UserAvatar";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PushTokenService } from "@/services/pushTokenService";
+import { getFromLocalStorage } from "@/store/storage";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useUserStore } from "@/store/useUserStore";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useAction } from "convex/react";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   DeviceEventEmitter,
@@ -34,6 +36,13 @@ const ProfileScreen = () => {
   const { currentUser } = useUserStore();
   const { hideOffensiveWords, setHideOffensiveWords } = useSettingsStore();
   const deleteAccountAction = useAction(api.users.initiateAccountDeletion);
+
+  const [cachedVersion, setCachedVersion] = useState<string | null>("");
+
+  useEffect(() => {
+    const { cachedVersion } = getFromLocalStorage(["cachedVersion"]);
+    setCachedVersion(cachedVersion);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -243,20 +252,25 @@ const ProfileScreen = () => {
           </CustomText>
         </TouchableOpacity>
       </View>
+      <View style={{ flex: 1 }} />
+      <CustomText variant="small" textAlign="center">
+        version {cachedVersion}
+      </CustomText>
     </ScrollView>
   );
 };
 
 export default ProfileScreen;
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme, rt) => ({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,
   },
   scrollContent: {
+    flexGrow: 1,
     padding: theme.paddingHorizontal,
-    paddingBottom: theme.gap(6),
+    paddingBottom: rt.insets.bottom + TAB_BAR_HEIGHT,
   },
   centeredScreen: {
     flex: 1,

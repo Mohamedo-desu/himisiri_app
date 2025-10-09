@@ -1,15 +1,14 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { authenticatedMutation } from "./customFunctions";
+import { authenticatedMutation, optionalAuthQuery } from "./customFunctions";
 import { notificationMutation } from "./notificationTriggers";
-import { rateLimitedOptionalAuthQuery } from "./rateLimitedFunctions";
 import { USER_TABLE } from "./schema";
 import { getAuthenticatedUser } from "./users";
 
 /**
  * Get paginated comments for a specific post with replies count
  */
-export const getPaginatedComments = rateLimitedOptionalAuthQuery({
+export const getPaginatedComments = optionalAuthQuery({
   args: {
     postId: v.id("posts"),
     paginationOpts: paginationOptsValidator,
@@ -25,8 +24,7 @@ export const getPaginatedComments = rateLimitedOptionalAuthQuery({
     const paginatedResult = await ctx.db
       .query("comments")
       .withIndex("by_post", (q: any) => q.eq("postId", args.postId))
-      .filter((q: any) => q.eq(q.field("status"), "active"))
-      .order("desc") // Most recent first
+      .order("desc")
       .paginate(args.paginationOpts);
 
     // Enrich comments with additional data

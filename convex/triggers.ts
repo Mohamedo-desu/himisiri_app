@@ -61,11 +61,6 @@ triggers.register("users", async (ctx, change) => {
       await ctx.db.delete(token._id);
     }
 
-    // inside triggers.register("users", ...)
-    await ctx.scheduler.runAfter(0, internal.actions.deleteExternalPushTokens, {
-      userId,
-    });
-
     // Delete notifications received
     const notifsReceived = await ctx.db
       .query("notifications")

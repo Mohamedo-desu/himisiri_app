@@ -46,8 +46,6 @@ const HomeScreen = () => {
     scrollY.value = event.nativeEvent.contentOffset.y;
   };
 
-  console.log({ results });
-
   const scrollToTop = () => {
     if (listRef.current) {
       listRef.current.scrollToOffset({ offset: 0, animated: true });

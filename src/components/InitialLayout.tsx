@@ -1,5 +1,6 @@
 import { useLoginPrompt } from "@/hooks/useLoginPrompt";
 import useSetupForPushNotifications from "@/hooks/useSetupForPushNotifications";
+import { useVersion } from "@/hooks/useVersion";
 import { Slot } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import { DeviceEventEmitter } from "react-native";
@@ -7,7 +8,7 @@ import LoginPrompt from "./auth/LoginPrompt";
 
 const InitialLayout = () => {
   useSetupForPushNotifications();
-
+  useVersion();
   const {
     showLoginPrompt,
     setShowLoginPrompt,
