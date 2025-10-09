@@ -42,29 +42,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       softwareKeyboardLayoutMode: "pan",
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: true,
-      intentFilters: [
-        {
-          action: "VIEW",
-          autoVerify: true,
-          data: [
-            {
-              scheme: "https",
-              host: `${PROJECT_SLUG}.expo.app`,
-              pathPrefix: "/",
-            },
-          ],
-          category: ["BROWSABLE", "DEFAULT"],
-        },
-        {
-          action: "VIEW",
-          data: [
-            {
-              scheme: scheme,
-            },
-          ],
-          category: ["BROWSABLE", "DEFAULT"],
-        },
-      ],
     },
     updates: {
       url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
@@ -77,11 +54,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: EAS_PROJECT_ID,
       },
     },
-    web: {
-      bundler: "metro",
-      output: "server",
-      favicon: "./assets/images/favicon.png",
-    },
+
     plugins: [
       [
         "expo-splash-screen",
